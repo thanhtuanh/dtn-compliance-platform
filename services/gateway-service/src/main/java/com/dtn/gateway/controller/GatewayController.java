@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.List;
+import java.util.HashMap;
 
 /**
  * DTN Gateway Controller
@@ -55,28 +56,30 @@ public class GatewayController {
     public ResponseEntity<Map<String, Object>> getGatewayStatus() {
         log.info("Gateway Status Check angefordert");
         
-        Map<String, Object> status = Map.of(
-            "service", "DTN Compliance Gateway",
-            "status", "UP",
-            "timestamp", LocalDateTime.now(),
-            "version", "1.0.0",
-            "port", serverPort,
-            "description", "DSGVO + EU AI Act konforme KI-Lösung",
-            "demo_url", "http://localhost:" + serverPort + "/swagger-ui/",
-            "business_value", "96.960€ Jahresersparnis für 100-MA Firma",
-            "target_audience", "Deutsche Software-Dienstleister (50-200 MA)",
-            "compliance", Map.of(
-                "gdpr_article_30", "VVT-Generierung automatisiert",
-                "gdpr_article_35", "DSFA-Automatisierung",
-                "eu_ai_act", "Risikoklassifizierung seit Feb 2025",
-                "german_legal", "BfDI + Landesdatenschutzbehörden konform"
-            ),
-            "services", Map.of(
-                "gateway", "http://localhost:8080 (aktiv)",
-                "compliance", "http://localhost:8081 (wird in Step 3 erstellt)",
-                "document", "http://localhost:8082 (wird in Step 4 erstellt)"
-            )
-        );
+        // Map Builder für komplexe Strukturen (Java 21 kompatibel)
+        Map<String, Object> compliance = new HashMap<>();
+        compliance.put("gdpr_article_30", "VVT-Generierung automatisiert");
+        compliance.put("gdpr_article_35", "DSFA-Automatisierung");
+        compliance.put("eu_ai_act", "Risikoklassifizierung seit Feb 2025");
+        compliance.put("german_legal", "BfDI + Landesdatenschutzbehörden konform");
+
+        Map<String, Object> services = new HashMap<>();
+        services.put("gateway", "http://localhost:8080 (aktiv)");
+        services.put("compliance", "http://localhost:8081 (wird in Step 3 erstellt)");
+        services.put("document", "http://localhost:8082 (wird in Step 4 erstellt)");
+
+        Map<String, Object> status = new HashMap<>();
+        status.put("service", "DTN Compliance Gateway");
+        status.put("status", "UP");
+        status.put("timestamp", LocalDateTime.now());
+        status.put("version", "1.0.0");
+        status.put("port", serverPort);
+        status.put("description", "DSGVO + EU AI Act konforme KI-Lösung");
+        status.put("demo_url", "http://localhost:" + serverPort + "/swagger-ui/");
+        status.put("business_value", "96.960€ Jahresersparnis für 100-MA Firma");
+        status.put("target_audience", "Deutsche Software-Dienstleister (50-200 MA)");
+        status.put("compliance", compliance);
+        status.put("services", services);
         
         return ResponseEntity.ok(status);
     }
@@ -89,34 +92,37 @@ public class GatewayController {
     public ResponseEntity<Map<String, Object>> getDeveloperInfo() {
         log.info("Developer Info für Bewerbung angefordert");
         
-        Map<String, Object> info = Map.of(
-            "developer", Map.of(
-                "name", "Duc Thanh Nguyen",
-                "experience", "10+ Jahre Java Fullstack Development",
-                "specialization", "Enterprise Mikroservices + DSGVO Compliance",
-                "languages", "Deutsch C1, English A2",
-                "location", "München/Bayern (Remote möglich)"
-            ),
-            "project_highlights", Map.of(
-                "business_problem_solved", "KI-Dilemma deutscher Software-Dienstleister",
-                "solution_approach", "Lokale KI + automatische Compliance-Prüfung",
-                "roi_demonstrated", "96.960€ Jahresersparnis quantifiziert",
-                "legal_compliance", "DSGVO + EU AI Act + deutsche Rechtssicherheit"
-            ),
-            "technical_expertise", Map.of(
-                "backend", "Java 21, Spring Boot 3.2, Spring Security",
-                "database", "PostgreSQL, JPA/Hibernate, Flyway Migration",
-                "microservices", "API Gateway, Service Discovery",
-                "containerization", "Docker, docker-compose, Multi-stage builds",
-                "testing", "JUnit 5, TestContainers, RestAssured"
-            ),
-            "demo_readiness", Map.of(
-                "swagger_ui", "Vollständige API-Dokumentation",
-                "health_checks", "Monitoring für alle Services",
-                "docker_demo", "5 Minuten von Start bis Demo",
-                "business_case", "ROI-Kalkulation integriert"
-            )
-        );
+        Map<String, Object> developer = new HashMap<>();
+        developer.put("name", "Duc Thanh Nguyen");
+        developer.put("experience", "10+ Jahre Java Fullstack Development");
+        developer.put("specialization", "Enterprise Mikroservices + DSGVO Compliance");
+        developer.put("languages", "Deutsch C1, English A2");
+        developer.put("location", "München/Bayern (Remote möglich)");
+
+        Map<String, Object> projectHighlights = new HashMap<>();
+        projectHighlights.put("business_problem_solved", "KI-Dilemma deutscher Software-Dienstleister");
+        projectHighlights.put("solution_approach", "Lokale KI + automatische Compliance-Prüfung");
+        projectHighlights.put("roi_demonstrated", "96.960€ Jahresersparnis quantifiziert");
+        projectHighlights.put("legal_compliance", "DSGVO + EU AI Act + deutsche Rechtssicherheit");
+
+        Map<String, Object> technicalExpertise = new HashMap<>();
+        technicalExpertise.put("backend", "Java 21, Spring Boot 3.2, Spring Security");
+        technicalExpertise.put("database", "PostgreSQL, JPA/Hibernate, Flyway Migration");
+        technicalExpertise.put("microservices", "API Gateway, Service Discovery");
+        technicalExpertise.put("containerization", "Docker, docker-compose, Multi-stage builds");
+        technicalExpertise.put("testing", "JUnit 5, TestContainers, RestAssured");
+
+        Map<String, Object> demoReadiness = new HashMap<>();
+        demoReadiness.put("swagger_ui", "Vollständige API-Dokumentation");
+        demoReadiness.put("health_checks", "Monitoring für alle Services");
+        demoReadiness.put("docker_demo", "5 Minuten von Start bis Demo");
+        demoReadiness.put("business_case", "ROI-Kalkulation integriert");
+
+        Map<String, Object> info = new HashMap<>();
+        info.put("developer", developer);
+        info.put("project_highlights", projectHighlights);
+        info.put("technical_expertise", technicalExpertise);
+        info.put("demo_readiness", demoReadiness);
         
         return ResponseEntity.ok(info);
     }
@@ -129,32 +135,34 @@ public class GatewayController {
     public ResponseEntity<Map<String, Object>> isDemoReady() {
         log.info("Demo-Readiness Check gestartet");
         
-        Map<String, Object> demoStatus = Map.of(
-            "demo_ready", true,
-            "swagger_ui", "✅ http://localhost:8080/swagger-ui/",
-            "services", Map.of(
-                "gateway", "✅ Läuft auf Port 8080",
-                "compliance", "⏳ Wird in Step 3 erstellt",
-                "document", "⏳ Wird in Step 4 erstellt"
-            ),
-            "features_ready", Map.of(
-                "vvt_generation", "⏳ DSGVO Art. 30 - Step 3",
-                "ai_risk_classification", "⏳ EU AI Act - Step 3",
-                "dsfa_automation", "⏳ DSGVO Art. 35 - Step 3",
-                "pdf_export", "⏳ Deutsche Templates - Step 4"
-            ),
-            "demo_script", Map.of(
-                "duration", "5 Minuten",
-                "audience", "Recruiter + Fach-ITler + Management",
-                "key_points", List.of(
-                    "Business Problem: KI-Compliance-Dilemma",
-                    "Solution: Lokale KI + DSGVO/EU AI Act",
-                    "ROI: 96.960€ Jahresersparnis",
-                    "Tech: Java 21 + Spring Boot + Mikroservices",
-                    "Demo: Live Swagger UI + Health Checks"
-                )
-            )
-        );
+        Map<String, Object> servicesStatus = new HashMap<>();
+        servicesStatus.put("gateway", "✅ Läuft auf Port 8080");
+        servicesStatus.put("compliance", "⏳ Wird in Step 3 erstellt");
+        servicesStatus.put("document", "⏳ Wird in Step 4 erstellt");
+
+        Map<String, Object> featuresReady = new HashMap<>();
+        featuresReady.put("vvt_generation", "⏳ DSGVO Art. 30 - Step 3");
+        featuresReady.put("ai_risk_classification", "⏳ EU AI Act - Step 3");
+        featuresReady.put("dsfa_automation", "⏳ DSGVO Art. 35 - Step 3");
+        featuresReady.put("pdf_export", "⏳ Deutsche Templates - Step 4");
+
+        Map<String, Object> demoScript = new HashMap<>();
+        demoScript.put("duration", "5 Minuten");
+        demoScript.put("audience", "Recruiter + Fach-ITler + Management");
+        demoScript.put("key_points", List.of(
+            "Business Problem: KI-Compliance-Dilemma",
+            "Solution: Lokale KI + DSGVO/EU AI Act",
+            "ROI: 96.960€ Jahresersparnis",
+            "Tech: Java 21 + Spring Boot + Mikroservices",
+            "Demo: Live Swagger UI + Health Checks"
+        ));
+
+        Map<String, Object> demoStatus = new HashMap<>();
+        demoStatus.put("demo_ready", true);
+        demoStatus.put("swagger_ui", "✅ http://localhost:8080/swagger-ui/");
+        demoStatus.put("services", servicesStatus);
+        demoStatus.put("features_ready", featuresReady);
+        demoStatus.put("demo_script", demoScript);
         
         return ResponseEntity.ok(demoStatus);
     }

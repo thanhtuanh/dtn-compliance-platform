@@ -5,16 +5,30 @@
          http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <parent>
-        <groupId>com.dtn</groupId>
-        <artifactId>compliance-platform</artifactId>
-        <version>1.0.0</version>
-        <relativePath>../../pom.xml</relativePath>
-    </parent>
-
+    <!-- Standalone Gateway Service - Docker-Ready -->
+    <groupId>com.dtn</groupId>
     <artifactId>gateway-service</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+    
     <name>DTN Gateway Service</name>
     <description>API Gateway für DTN Compliance Platform - DSGVO + EU AI Act</description>
+
+    <!-- Spring Boot Parent direkt verwenden -->
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.2.1</version>
+        <relativePath/>
+    </parent>
+
+    <properties>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <java.version>21</java.version>
+        <spring-cloud.version>2023.0.0</spring-cloud.version>
+    </properties>
 
     <dependencies>
         <!-- Spring Boot Starters -->
@@ -45,22 +59,22 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- JWT -->
+        <!-- JWT - Vereinfachte Version für Demo -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
-            <version>0.12.3</version>
+            <version>0.11.5</version>
         </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-impl</artifactId>
-            <version>0.12.3</version>
+            <version>0.11.5</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-jackson</artifactId>
-            <version>0.12.3</version>
+            <version>0.11.5</version>
             <scope>runtime</scope>
         </dependency>
 
@@ -68,7 +82,7 @@
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-            <version>2.2.0</version>
+            <version>2.3.0</version>
         </dependency>
 
         <!-- Lombok -->
@@ -90,7 +104,26 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
+
+    <!-- Spring Cloud Dependency Management -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <build>
         <plugins>
@@ -104,8 +137,86 @@
                             <artifactId>lombok</artifactId>
                         </exclude>
                     </excludes>
+                    <!-- Executable JAR für Container -->
+                    <executable>true</executable>
+                </configuration>
+            </plugin>
+
+            <!-- Maven Compiler Plugin -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <source>21</source>
+                    <target>21</target>
+                    <compilerArgs>
+                        <arg>--enable-preview</arg>
+                    </compilerArgs>
+                </configuration>
+            </plugin>
+
+            <!-- Surefire Plugin für Tests -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.2</version>
+                <configuration>
+                    <argLine>--enable-preview</argLine>
+                </configuration>
+            </plugin>
+
+            <!-- Docker Build Plugin (Optional für CI/CD) -->
+            <plugin>
+                <groupId>com.google.cloud.tools</groupId>
+                <artifactId>jib-maven-plugin</artifactId>
+                <version>3.4.0</version>
+                <configuration>
+                    <from>
+                        <image>eclipse-temurin:21-jre-alpine</image>
+                    </from>
+                    <to>
+                        <image>dtn/gateway-service:${project.version}</image>
+                    </to>
+                    <container>
+                        <mainClass>com.dtn.gateway.GatewayApplication</mainClass>
+                        <jvmFlags>
+                            <jvmFlag>-Xmx512m</jvmFlag>
+                            <jvmFlag>-Xms256m</jvmFlag>
+                        </jvmFlags>
+                        <ports>
+                            <port>8080</port>
+                        </ports>
+                        <environment>
+                            <SPRING_PROFILES_ACTIVE>docker</SPRING_PROFILES_ACTIVE>
+                        </environment>
+                    </container>
                 </configuration>
             </plugin>
         </plugins>
     </build>
+
+    <!-- Profiles für verschiedene Umgebungen -->
+    <profiles>
+        <profile>
+            <id>local</id>
+            <properties>
+                <spring.profiles.active>local</spring.profiles.active>
+            </properties>
+        </profile>
+        
+        <profile>
+            <id>docker</id>
+            <properties>
+                <spring.profiles.active>docker</spring.profiles.active>
+            </properties>
+        </profile>
+        
+        <profile>
+            <id>production</id>
+            <properties>
+                <spring.profiles.active>production</spring.profiles.active>
+            </properties>
+        </profile>
+    </profiles>
 </project>

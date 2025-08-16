@@ -1,0 +1,31 @@
+{
+    "Servers": {
+        "1": {
+            "Name": "DTN Gateway DB",
+            "Group": "DTN Compliance Platform",
+            "Host": "postgres-gateway",
+            "Port": 5432,
+            "MaintenanceDB": "dtn_gateway",
+            "Username": "dtn_user",
+            "SSLMode": "prefer"
+        },
+        "2": {
+            "Name": "DTN Compliance DB", 
+            "Group": "DTN Compliance Platform",
+            "Host": "postgres-compliance",
+            "Port": 5432,
+            "MaintenanceDB": "dtn_compliance",
+            "Username": "dtn_user",
+            "SSLMode": "prefer"
+        },
+        "3": {
+            "Name": "DTN Document DB",
+            "Group": "DTN Compliance Platform", 
+            "Host": "postgres-document",
+            "Port": 5432,
+            "MaintenanceDB": "dtn_document",
+            "Username": "dtn_user",
+            "SSLMode": "prefer"
+        }
+    }
+}

@@ -1,0 +1,294 @@
+# DTN Compliance Platform - Docker Compose Setup
+# DSGVO + EU AI Act konforme KI-Lösung für deutsche Unternehmen
+#
+# Verwendung:
+# docker-compose up -d          # Startet alle Services im Hintergrund
+# docker-compose logs gateway   # Zeigt Gateway-Logs
+# docker-compose down           # Stoppt alle Services
+
+version: '3.8'
+
+services:
+  #################################
+  # PostgreSQL Databases
+  #################################
+  
+  # Gateway Database (User Management, Sessions)
+  postgres-gateway:
+    image: postgres:15-alpine
+    container_name: dtn-postgres-gateway
+    environment:
+      POSTGRES_DB: dtn_gateway
+      POSTGRES_USER: dtn_user
+      POSTGRES_PASSWORD: dtn_secure_2024
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_gateway_data:/var/lib/postgresql/data
+      - ./scripts/init-gateway-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    networks:
+      - dtn-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dtn_user -d dtn_gateway || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  # Compliance Database (DSGVO + EU AI Act Daten)
+  postgres-compliance:
+    image: postgres:15-alpine
+    container_name: dtn-postgres-compliance
+    environment:
+      POSTGRES_DB: dtn_compliance
+      POSTGRES_USER: dtn_user
+      POSTGRES_PASSWORD: dtn_secure_2024
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_compliance_data:/var/lib/postgresql/data
+      - ./scripts/init-compliance-db.sql:/docker-entrypoint-initdb.d/01-init.sql
+    networks:
+      - dtn-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dtn_user -d dtn_compliance"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Document Database (PDF Templates, Exports)
+  postgres-document:
+    image: postgres:15-alpine
+    container_name: dtn-postgres-document
+    environment:
+      POSTGRES_DB: dtn_document
+      POSTGRES_USER: dtn_user
+      POSTGRES_PASSWORD: dtn_secure_2024
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_document_data:/var/lib/postgresql/data
+      - ./scripts/init-document-db.sql:/docker-entrypoint-initdb.d/01-init.sql
+    networks:
+      - dtn-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dtn_user -d dtn_document"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  #################################
+  # DTN Mikroservices
+  #################################
+
+  # API Gateway Service (Port 8080)
+  gateway-service:
+    build:
+      context: ./services/gateway-service
+      dockerfile: Dockerfile
+    container_name: dtn-gateway
+    environment:
+      # Database Connection
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: postgres-gateway
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB_GATEWAY}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      
+      # JWT Configuration
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION}
+      
+      # Frontend URL aus .env
+      FRONTEND_URL: ${FRONTEND_URL}
+      
+      # Service URLs
+      COMPLIANCE_SERVICE_URL: http://compliance-service:8081
+      DOCUMENT_SERVICE_URL: http://document-service:8082
+      
+      # DSGVO Settings
+      GDPR_LOGGING_ENABLED: ${GDPR_LOGGING_ENABLED}
+      AUDIT_LOG_LEVEL: ${AUDIT_LOG_LEVEL}
+      
+      # Demo Configuration
+      DEMO_MODE: ${DEMO_MODE}
+      BUSINESS_VALUE_ANNUAL_SAVINGS: ${BUSINESS_VALUE_ANNUAL_SAVINGS}
+      
+      # JVM Settings
+      JAVA_OPTS: "-Xmx512m -Xms256m"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres-gateway:
+        condition: service_healthy
+    networks:
+      - dtn-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    volumes:
+      - gateway_logs:/app/logs
+
+  # Compliance Service (wird in Step 3 erstellt)
+  # compliance-service:
+  #   build:
+  #     context: ./services/compliance-service
+  #     dockerfile: Dockerfile
+  #   container_name: dtn-compliance
+  #   environment:
+  #     SPRING_PROFILES_ACTIVE: docker
+  #     DB_HOST: postgres-compliance
+  #     DB_PORT: 5432
+  #     DB_NAME: dtn_compliance
+  #     DB_USER: dtn_user
+  #     DB_PASSWORD: dtn_secure_2024
+  #     OLLAMA_BASE_URL: http://ollama:11434
+  #   ports:
+  #     - "8081:8081"
+  #   depends_on:
+  #     postgres-compliance:
+  #       condition: service_healthy
+  #     ollama:
+  #       condition: service_started
+  #   networks:
+  #     - dtn-network
+  #   restart: unless-stopped
+
+  # Document Service (wird in Step 4 erstellt)
+  # document-service:
+  #   build:
+  #     context: ./services/document-service
+  #     dockerfile: Dockerfile
+  #   container_name: dtn-document
+  #   environment:
+  #     SPRING_PROFILES_ACTIVE: docker
+  #     DB_HOST: postgres-document
+  #     DB_PORT: 5432
+  #     DB_NAME: dtn_document
+  #     DB_USER: dtn_user
+  #     DB_PASSWORD: dtn_secure_2024
+  #   ports:
+  #     - "8082:8082"
+  #   depends_on:
+  #     postgres-document:
+  #       condition: service_healthy
+  #   networks:
+  #     - dtn-network
+  #   restart: unless-stopped
+
+  #################################
+  # Ollama (Lokale KI - Privacy by Design)
+  #################################
+  ollama:
+    image: ollama/ollama:latest
+    container_name: dtn-ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_MODELS=/root/.ollama/models
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+      - ./scripts/ollama-init.sh:/docker-entrypoint-initdb.d/init.sh
+    networks:
+      - dtn-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  #################################
+  # Monitoring & Demo Tools
+  #################################
+  
+  # pgAdmin für Database Management (Demo-Zwecke)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: dtn-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@dtn-compliance.de
+      PGADMIN_DEFAULT_PASSWORD: dtn_admin_2024
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      - ./scripts/pgadmin-servers.json:/pgadmin4/servers.json
+    networks:
+      - dtn-network
+    depends_on:
+      - postgres-gateway
+      - postgres-compliance
+      - postgres-document
+    restart: unless-stopped
+
+#################################
+# Networks & Volumes
+#################################
+networks:
+  dtn-network:
+    driver: bridge
+    name: dtn-compliance-network
+
+volumes:
+  # Database Volumes
+  postgres_gateway_data:
+    driver: local
+    name: dtn_postgres_gateway_data
+  postgres_compliance_data:
+    driver: local
+    name: dtn_postgres_compliance_data
+  postgres_document_data:
+    driver: local
+    name: dtn_postgres_document_data
+  
+  # Application Volumes
+  gateway_logs:
+    driver: local
+    name: dtn_gateway_logs
+  ollama_data:
+    driver: local
+    name: dtn_ollama_data
+  pgadmin_data:
+    driver: local
+    name: dtn_pgadmin_data
+
+#################################
+# Demo-Ready Informationen
+#################################
+# 
+# 🚀 DTN Compliance Platform erfolgreich gestartet!
+#
+# 📊 Business Value:
+#   - 96.960€ Jahresersparnis für 100-MA Software-Firma
+#   - DSGVO Art. 30: Automatische VVT-Generierung
+#   - EU AI Act: KI-Risikoklassifizierung seit Feb 2025
+#
+# 🌐 Demo URLs:
+#   - Gateway: http://localhost:8080/swagger-ui/
+#   - Health Check: http://localhost:8080/actuator/health
+#   - pgAdmin: http://localhost:5050 (admin@dtn-compliance.de / dtn_admin_2024)
+#   - Ollama: http://localhost:11434/api/tags
+#
+# 🎯 Database Connections:
+#   - Gateway: localhost:5432/dtn_gateway
+#   - Compliance: localhost:5433/dtn_compliance  
+#   - Document: localhost:5434/dtn_document
+#   - User: dtn_user / Password: dtn_secure_2024
+#
+# 💼 Perfekt für Bewerbungsgespräche und Live-Demos!
+#
