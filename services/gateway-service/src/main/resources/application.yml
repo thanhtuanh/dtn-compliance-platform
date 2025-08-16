@@ -1,0 +1,199 @@
+# DTN Compliance Platform - Gateway Service Configuration
+# DSGVO + EU AI Act konforme KI-Lösung für deutsche Unternehmen
+
+server:
+  port: 8080
+  servlet:
+    context-path: /
+  compression:
+    enabled: true
+  error:
+    include-message: always
+    include-stacktrace: on_param
+
+spring:
+  application:
+    name: dtn-gateway-service
+  
+  # Profile für verschiedene Umgebungen
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+  
+  # Database Configuration (für Gateway User Management)
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:dtn_gateway}
+    username: ${DB_USER:dtn_user}
+    password: ${DB_PASSWORD:dtn_secure_2024}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      idle-timeout: 300000
+      connection-timeout: 20000
+      leak-detection-threshold: 60000
+  
+  # JPA Configuration
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        jdbc:
+          time_zone: Europe/Berlin
+  
+  # Security Configuration
+  security:
+    jwt:
+      secret: ${JWT_SECRET:DTN_Compliance_Platform_Secret_Key_2024_DSGVO_EU_AI_Act}
+      expiration: ${JWT_EXPIRATION:86400000}  # 24 Stunden
+      issuer: DTN-Compliance-Platform
+
+# DSGVO Compliance Configuration
+dtn:
+  compliance:
+    gdpr:
+      logging-enabled: ${GDPR_LOGGING_ENABLED:true}
+      data-retention-days: ${DATA_RETENTION_DAYS:365}
+      audit-log-level: ${AUDIT_LOG_LEVEL:INFO}
+      german-dpa-reporting: ${GERMAN_DPA_REPORTING:true}
+      bfdi-compatible: ${BFDI_COMPATIBLE:true}
+    
+    # EU AI Act Configuration (seit Februar 2025)
+    ai-act:
+      enabled: ${EU_AI_ACT_ENABLED:true}
+      risk-classification: ${AI_RISK_CLASSIFICATION:true}
+      prohibited-practices-check: ${PROHIBITED_PRACTICES_CHECK:true}
+      high-risk-documentation: ${HIGH_RISK_DOCUMENTATION:true}
+
+# Service URLs für Routing
+services:
+  compliance:
+    url: ${COMPLIANCE_SERVICE_URL:http://localhost:8081}
+  document:
+    url: ${DOCUMENT_SERVICE_URL:http://localhost:8082}
+
+# Actuator für Health Checks und Monitoring
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      show-components: always
+  health:
+    db:
+      enabled: true
+    diskspace:
+      enabled: true
+  info:
+    env:
+      enabled: true
+    java:
+      enabled: true
+    os:
+      enabled: true
+
+# Swagger/OpenAPI 3 Configuration
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    tags-sorter: alpha
+    operations-sorter: method
+    disable-swagger-default-url: true
+    display-request-duration: true
+    doc-expansion: none
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  show-actuator: true
+
+# Logging Configuration (DSGVO-konform)
+logging:
+  level:
+    com.dtn.gateway: ${LOG_LEVEL:INFO}
+    org.springframework.security: WARN
+    org.springframework.web: WARN
+    org.hibernate.SQL: WARN
+  pattern:
+    file: '%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%logger{36}] - %msg%n'
+    console: '%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n'
+  file:
+    name: logs/gateway/dtn-gateway.log
+    max-size: 10MB
+    max-history: 30
+
+# CORS Configuration für Frontend Integration
+cors:
+  allowed-origins: 
+    - http://localhost:3000
+    - http://localhost:4200
+    - https://dtn-frontend.onrender.com
+  allowed-methods:
+    - GET
+    - POST
+    - PUT
+    - DELETE
+    - OPTIONS
+  allowed-headers:
+    - Authorization
+    - Content-Type
+    - X-Requested-With
+  exposed-headers:
+    - X-Total-Count
+  allow-credentials: true
+  max-age: 3600
+
+---
+# Local Development Profile
+spring:
+  config:
+    activate:
+      on-profile: local
+  
+  datasource:
+    url: jdbc:postgresql://localhost:5432/dtn_gateway
+    username: dtn_user
+    password: dtn_secure_2024
+  
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+
+# Debug für lokale Entwicklung
+logging:
+  level:
+    com.dtn.gateway: DEBUG
+    org.springframework.web: DEBUG
+
+---
+# Production Profile (Render.com)
+spring:
+  config:
+    activate:
+      on-profile: production
+
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+# Production Logging (strukturiert für Monitoring)
+logging:
+  level:
+    com.dtn.gateway: INFO
+    org.springframework.web: WARN
+  pattern:
+    file: '{"timestamp":"%d{yyyy-MM-dd HH:mm:ss.SSS}","level":"%level","thread":"%thread","logger":"%logger{36}","message":"%msg"}%n'
