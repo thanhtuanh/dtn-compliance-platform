@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # DTN Compliance Platform - Quick Demo Check
-# Schneller Health Check für Bewerbungsgespräche
+# Korrigiert für tatsächliche Swagger UI Pfade
 
 # Colors
 GREEN='\033[0;32m'
@@ -24,9 +24,9 @@ else
     GATEWAY_OK=false
 fi
 
-# Swagger UI Check
+# Swagger UI Check - KORRIGIERT für richtigen Pfad
 echo -n "Swagger UI: "
-if curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/swagger-ui/ | grep -q "200"; then
+if curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/swagger-ui/index.html | grep -q "200"; then
     echo -e "${GREEN}✅ AVAILABLE${NC}"
     SWAGGER_OK=true
 else
@@ -36,24 +36,27 @@ fi
 
 # Database Check
 echo -n "Gateway Database: "
-if pg_isready -h localhost -p 5432 -U dtn_user -t 5 &>/dev/null; then
+if curl -s "http://localhost:8080/actuator/health" | grep -q '"status":"UP"'; then
     echo -e "${GREEN}✅ CONNECTED${NC}"
     DB_OK=true
 else
-    echo -e "${RED}❌ NO CONNECTION${NC}"
+    echo -e "${RED}❌ DISCONNECTED${NC}"
     DB_OK=false
 fi
 
 echo ""
 
 # Demo Readiness Summary
-if [[ "$GATEWAY_OK" == "true" && "$SWAGGER_OK" == "true" ]]; then
+if [[ "$GATEWAY_OK" == "true" && "$SWAGGER_OK" == "true" && "$DB_OK" == "true" ]]; then
     echo -e "${GREEN}🎉 DEMO READY!${NC}"
     echo ""
     echo -e "${BLUE}📊 Demo URLs für Bewerbungsgespräche:${NC}"
-    echo -e "  Swagger UI: ${YELLOW}http://localhost:8080/swagger-ui/${NC}"
+    echo -e "  Swagger UI: ${YELLOW}http://localhost:8080/swagger-ui/index.html${NC}"
+    echo -e "  Swagger UI (Alt): ${YELLOW}http://localhost:8080/swagger-ui.html${NC}"
+    echo -e "  API Docs: ${YELLOW}http://localhost:8080/v3/api-docs${NC}"
     echo -e "  Gateway Status: ${YELLOW}http://localhost:8080/api/v1/gateway/status${NC}"
     echo -e "  Developer Info: ${YELLOW}http://localhost:8080/api/v1/gateway/developer-info${NC}"
+    echo -e "  Health Check: ${YELLOW}http://localhost:8080/actuator/health${NC}"
     echo ""
     echo -e "${GREEN}✨ Bereit für Step 3: Compliance Service!${NC}"
     echo -e "   💡 Sagen Sie 'OK Step 3' für DSGVO + EU AI Act Features"
@@ -66,8 +69,11 @@ else
         echo "  1. Database starten: docker-compose up -d postgres-gateway"
     fi
     if [[ "$GATEWAY_OK" == "false" ]]; then
-        echo "  2. Gateway starten: mvn spring-boot:run"
+        echo "  2. Gateway starten: cd services/gateway-service && mvn spring-boot:run"
     fi
-    echo "  3. 30 Sekunden warten und erneut prüfen"
+    if [[ "$SWAGGER_OK" == "false" ]]; then
+        echo "  3. Swagger UI: WebConfig hinzufügen (siehe Lösung oben)"
+    fi
+    echo "  4. 30 Sekunden warten und erneut prüfen"
     exit 1
 fi

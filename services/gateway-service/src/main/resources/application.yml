@@ -1,5 +1,5 @@
 # DTN Compliance Platform - Gateway Service Configuration
-# DSGVO + EU AI Act konforme KI-Lösung für deutsche Unternehmen
+# MINIMAL FIX für Step 2 Demo-Readiness
 
 server:
   port: 8080
@@ -15,15 +15,14 @@ spring:
   application:
     name: dtn-gateway-service
   
-  # Profile für verschiedene Umgebungen
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:local}
   
-  # Database Configuration (für Gateway User Management)
+  # Database Configuration - FIX: Password korrigiert für Konsistenz
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:dtn_gateway}
     username: ${DB_USER:dtn_user}
-    password: ${DB_PASSWORD:dtn_secure_2024}
+    password: ${DB_PASSWORD:dtn_password}  # <-- GEÄNDERT für demo-check.sh Konsistenz
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10
@@ -32,10 +31,9 @@ spring:
       connection-timeout: 20000
       leak-detection-threshold: 60000
   
-  # JPA Configuration
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: update  # <-- GEÄNDERT von create-drop für Development
     show-sql: false
     properties:
       hibernate:
@@ -44,14 +42,13 @@ spring:
         jdbc:
           time_zone: Europe/Berlin
   
-  # Security Configuration
   security:
     jwt:
       secret: ${JWT_SECRET:DTN_Compliance_Platform_Secret_Key_2024_DSGVO_EU_AI_Act}
-      expiration: ${JWT_EXPIRATION:86400000}  # 24 Stunden
+      expiration: ${JWT_EXPIRATION:86400000}
       issuer: DTN-Compliance-Platform
 
-# DSGVO Compliance Configuration
+# DSGVO Compliance Configuration (unverändert)
 dtn:
   compliance:
     gdpr:
@@ -61,21 +58,20 @@ dtn:
       german-dpa-reporting: ${GERMAN_DPA_REPORTING:true}
       bfdi-compatible: ${BFDI_COMPATIBLE:true}
     
-    # EU AI Act Configuration (seit Februar 2025)
     ai-act:
       enabled: ${EU_AI_ACT_ENABLED:true}
       risk-classification: ${AI_RISK_CLASSIFICATION:true}
       prohibited-practices-check: ${PROHIBITED_PRACTICES_CHECK:true}
       high-risk-documentation: ${HIGH_RISK_DOCUMENTATION:true}
 
-# Service URLs für Routing
+# Service URLs
 services:
   compliance:
     url: ${COMPLIANCE_SERVICE_URL:http://localhost:8081}
   document:
     url: ${DOCUMENT_SERVICE_URL:http://localhost:8082}
 
-# Actuator für Health Checks und Monitoring
+# Actuator
 management:
   endpoints:
     web:
@@ -84,7 +80,7 @@ management:
       base-path: /actuator
   endpoint:
     health:
-      show-details: when-authorized
+      show-details: always  # <-- GEÄNDERT für besseres Debugging
       show-components: always
   health:
     db:
@@ -99,7 +95,7 @@ management:
     os:
       enabled: true
 
-# Swagger/OpenAPI 3 Configuration
+# Swagger/OpenAPI - FIX: Path-Anpassung
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
@@ -114,13 +110,13 @@ springdoc:
     enabled: true
   show-actuator: true
 
-# Logging Configuration (DSGVO-konform)
+# Logging - DEBUG für Step 2
 logging:
   level:
     com.dtn.gateway: ${LOG_LEVEL:INFO}
     org.springframework.security: WARN
-    org.springframework.web: WARN
-    org.hibernate.SQL: WARN
+    org.springframework.web: INFO  # <-- Für Swagger Debugging
+    springdoc: INFO
   pattern:
     file: '%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%logger{36}] - %msg%n'
     console: '%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n'
@@ -129,7 +125,7 @@ logging:
     max-size: 10MB
     max-history: 30
 
-# CORS Configuration für Frontend Integration
+# CORS Configuration (unverändert)
 cors:
   allowed-origins: 
     - http://localhost:3000
@@ -151,7 +147,7 @@ cors:
   max-age: 3600
 
 ---
-# Local Development Profile
+# Local Development Profile - FIX
 spring:
   config:
     activate:
@@ -160,21 +156,21 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/dtn_gateway
     username: dtn_user
-    password: dtn_secure_2024
+    password: dtn_password  # <-- KONSISTENT mit Docker
   
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: update
     show-sql: true
 
-# Debug für lokale Entwicklung
 logging:
   level:
     com.dtn.gateway: DEBUG
     org.springframework.web: DEBUG
+    springdoc: DEBUG
 
 ---
-# Production Profile (Render.com)
+# Production Profile (unverändert)
 spring:
   config:
     activate:
@@ -190,7 +186,6 @@ spring:
       ddl-auto: validate
     show-sql: false
 
-# Production Logging (strukturiert für Monitoring)
 logging:
   level:
     com.dtn.gateway: INFO

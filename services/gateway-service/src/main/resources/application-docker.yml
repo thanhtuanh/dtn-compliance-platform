@@ -1,189 +1,155 @@
-# DTN Compliance Platform - Docker Environment Configuration
-# Optimiert für Container-Deployment und Demo-Präsentationen
+# DTN Compliance Platform - Docker Compose Setup
+# MINIMAL FIX für Password-Konsistenz
 
-spring:
-  config:
-    activate:
-      on-profile: docker
+version: '3.8'
 
-  # Application Info
-  application:
-    name: dtn-gateway-service
-
-  # Database Configuration für Docker Container
-  datasource:
-    url: jdbc:postgresql://${DB_HOST:postgres-gateway}:${DB_PORT:5432}/${DB_NAME:dtn_gateway}
-    username: ${DB_USER:dtn_user}
-    password: ${DB_PASSWORD:dtn_secure_2024}
-    driver-class-name: org.postgresql.Driver
-    
-    # Optimiert für Container-Environment
-    hikari:
-      maximum-pool-size: 20
-      minimum-idle: 5
-      idle-timeout: 300000
-      connection-timeout: 20000
-      leak-detection-threshold: 60000
-      pool-name: DTN-Gateway-HikariCP
-
-  # JPA Configuration für Docker
-  jpa:
-    hibernate:
-      ddl-auto: update  # Für Demo: automatische Schema-Updates
-    show-sql: false
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
-        jdbc:
-          time_zone: Europe/Berlin
-        enable_lazy_load_no_trans: true
-
-  # Security Configuration
-  security:
-    jwt:
-      secret: ${JWT_SECRET:DTN_Compliance_Platform_Secret_Key_2024_DSGVO_EU_AI_Act}
-      expiration: ${JWT_EXPIRATION:86400000}
-      issuer: DTN-Compliance-Platform
-
-# Server Configuration für Container
-server:
-  port: 8080
-  servlet:
-    context-path: /
-  compression:
-    enabled: true
-  tomcat:
-    max-threads: 200
-    min-spare-threads: 10
-
-# DTN Business Configuration
-dtn:
-  compliance:
-    gdpr:
-      logging-enabled: ${GDPR_LOGGING_ENABLED:true}
-      data-retention-days: ${DATA_RETENTION_DAYS:365}
-      audit-log-level: ${AUDIT_LOG_LEVEL:INFO}
-      german-dpa-reporting: true
-      bfdi-compatible: true
-    
-    ai-act:
-      enabled: true
-      risk-classification: true
-      prohibited-practices-check: true
-      high-risk-documentation: true
-
-# Service Discovery für Mikroservices
 services:
-  compliance:
-    url: ${COMPLIANCE_SERVICE_URL:http://compliance-service:8081}
-  document:
-    url: ${DOCUMENT_SERVICE_URL:http://document-service:8082}
+  #################################
+  # PostgreSQL Databases - PASSWORD FIX
+  #################################
+  
+  postgres-gateway:
+    image: postgres:15-alpine
+    container_name: dtn-postgres-gateway
+    environment:
+      POSTGRES_DB: dtn_gateway
+      POSTGRES_USER: dtn_user
+      POSTGRES_PASSWORD: dtn_password  # <-- GEÄNDERT für Konsistenz
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_gateway_data:/var/lib/postgresql/data
+      - ./scripts/init-gateway-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    networks:
+      - dtn-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dtn_user -d dtn_gateway || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
 
-# Health Check & Monitoring
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,metrics,prometheus,env
-      base-path: /actuator
-  endpoint:
-    health:
-      show-details: always
-      show-components: always
-      group:
-        demo:
-          include: db,diskSpace
-  health:
-    db:
-      enabled: true
-    diskspace:
-      enabled: true
-  info:
-    env:
-      enabled: true
-    java:
-      enabled: true
-    os:
-      enabled: true
-  metrics:
-    export:
-      prometheus:
-        enabled: true
+  postgres-compliance:
+    image: postgres:15-alpine
+    container_name: dtn-postgres-compliance
+    environment:
+      POSTGRES_DB: dtn_compliance
+      POSTGRES_USER: dtn_user
+      POSTGRES_PASSWORD: dtn_password  # <-- GEÄNDERT für Konsistenz
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_compliance_data:/var/lib/postgresql/data
+      - ./scripts/init-compliance-db.sql:/docker-entrypoint-initdb.d/01-init.sql
+    networks:
+      - dtn-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dtn_user -d dtn_compliance"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
 
-# Swagger/OpenAPI für Demo-Präsentationen
-springdoc:
-  swagger-ui:
-    path: /swagger-ui.html
-    enabled: true
-    tags-sorter: alpha
-    operations-sorter: method
-    disable-swagger-default-url: true
-    display-request-duration: true
-    doc-expansion: none
-    show-extensions: true
-    show-common-extensions: true
-  api-docs:
-    path: /v3/api-docs
-    enabled: true
-  show-actuator: true
+  postgres-document:
+    image: postgres:15-alpine
+    container_name: dtn-postgres-document
+    environment:
+      POSTGRES_DB: dtn_document
+      POSTGRES_USER: dtn_user
+      POSTGRES_PASSWORD: dtn_password  # <-- GEÄNDERT für Konsistenz
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_document_data:/var/lib/postgresql/data
+      - ./scripts/init-document-db.sql:/docker-entrypoint-initdb.d/01-init.sql
+    networks:
+      - dtn-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dtn_user -d dtn_document"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
 
-# Logging Configuration (Docker-optimiert)
-logging:
-  level:
-    com.dtn.gateway: ${LOG_LEVEL:INFO}
-    org.springframework.security: WARN
-    org.springframework.web: WARN
-    org.hibernate.SQL: WARN
-    org.hibernate.type.descriptor.sql.BasicBinder: WARN
-  pattern:
-    # JSON-Format für Container-Logging
-    console: '{"timestamp":"%d{yyyy-MM-dd HH:mm:ss.SSS}","level":"%-5level","thread":"%thread","logger":"%logger{36}","message":"%msg"}%n'
-  file:
-    name: /app/logs/dtn-gateway.log
-    max-size: 50MB
-    max-history: 10
+  #################################
+  # Ollama (Fixed für UNHEALTHY Status)
+  #################################
+  ollama:
+    image: ollama/ollama:latest
+    container_name: dtn-ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+      - OLLAMA_ORIGINS=*
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - dtn-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s  # <-- Längere Startzeit für Ollama
+    deploy:
+      resources:
+        limits:
+          memory: 4G  # <-- Mehr Memory für Ollama
+        reservations:
+          memory: 2G
 
-# CORS für Frontend-Integration
-cors:
-  allowed-origins:
-    - http://localhost:3000
-    - http://localhost:4200
-    - https://dtn-frontend.onrender.com
-    - http://gateway-service:8080
-  allowed-methods:
-    - GET
-    - POST
-    - PUT
-    - DELETE
-    - OPTIONS
-    - PATCH
-  allowed-headers:
-    - Authorization
-    - Content-Type
-    - X-Requested-With
-    - Accept
-    - Origin
-  exposed-headers:
-    - X-Total-Count
-    - X-Page-Count
-  allow-credentials: true
-  max-age: 3600
+  #################################
+  # pgAdmin (Password auch angepasst)
+  #################################
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: dtn-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@dtn-compliance.de
+      PGADMIN_DEFAULT_PASSWORD: dtn_admin_2024
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      - ./scripts/pgadmin-servers.json:/pgadmin4/servers.json
+    networks:
+      - dtn-network
+    depends_on:
+      - postgres-gateway
+      - postgres-compliance
+      - postgres-document
+    restart: unless-stopped
 
-# Demo Information für Bewerbungsgespräche
-demo:
-  info:
-    title: "DTN Compliance Intelligence Platform"
-    description: "DSGVO + EU AI Act konforme KI-Lösung für deutsche Unternehmen"
-    version: "1.0.0"
-    business-value: "96.960€ Jahresersparnis für 100-MA Software-Firma"
-    target-audience: "Deutsche Software-Dienstleister (50-200 MA)"
-    developer:
-      name: "Duc Thanh Nguyen"
-      location: "München/Bayern"
-      email: "n.thanh@gmx.de"
-    tech-stack:
-      backend: "Java 21, Spring Boot 3.2, PostgreSQL"
-      containers: "Docker, docker-compose"
-      deployment: "Render.com (Live-Demo)"
-      compliance: "DSGVO + EU AI Act + BfDI konform"
+#################################
+# Networks & Volumes (unverändert)
+#################################
+networks:
+  dtn-network:
+    driver: bridge
+    name: dtn-compliance-network
+
+volumes:
+  postgres_gateway_data:
+    driver: local
+    name: dtn_postgres_gateway_data
+  postgres_compliance_data:
+    driver: local
+    name: dtn_postgres_compliance_data
+  postgres_document_data:
+    driver: local
+    name: dtn_postgres_document_data
+  ollama_data:
+    driver: local
+    name: dtn_ollama_data
+  pgadmin_data:
+    driver: local
+    name: dtn_pgadmin_data
+
+# Gateway Service wird separat mit maven gestartet

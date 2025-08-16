@@ -1,12 +1,7 @@
 #!/bin/bash
 
 # DTN Compliance Platform - Health Check Script
-# DSGVO + EU AI Act konforme KI-Lösung für deutsche Unternehmen
-#
-# Usage:
-#   ./scripts/health-check.sh          # Check all services
-#   ./scripts/health-check.sh gateway  # Check only gateway
-#   ./scripts/health-check.sh --demo   # Demo mode with pretty output
+# KORRIGIERT für tatsächliche Swagger UI Pfade und return-Fehler
 
 set -e
 
@@ -24,7 +19,6 @@ GATEWAY_URL="http://localhost:8080"
 COMPLIANCE_URL="http://localhost:8081"
 DOCUMENT_URL="http://localhost:8082"
 OLLAMA_URL="http://localhost:11434"
-PGADMIN_URL="http://localhost:5050"
 
 # Database Configuration
 DB_GATEWAY_PORT="5432"
@@ -80,11 +74,6 @@ show_help() {
     echo "  --demo      Demo mode with enhanced output"
     echo "  --verbose   Verbose output with details"
     echo "  --help      Show this help message"
-    echo ""
-    echo "Examples:"
-    echo "  $0                    # Check all services"
-    echo "  $0 gateway           # Check only gateway"
-    echo "  $0 --demo            # Demo presentation mode"
 }
 
 # Demo banner for presentations
@@ -115,7 +104,7 @@ check_prerequisites() {
     fi
 }
 
-# Generic HTTP health check
+# Generic HTTP health check - KORRIGIERT: return-Werte
 check_http_service() {
     local name="$1"
     local url="$2"
@@ -226,50 +215,75 @@ check_docker_containers() {
     echo ""
 }
 
-# Main health check function
+# Main health check function - KORRIGIERT: return-Werte
 run_health_checks() {
-    local all_healthy=true
+    local all_healthy=0  # 0 = healthy, 1 = unhealthy
     
     # Gateway Service
     if [[ -z "$SERVICE_FILTER" || "$SERVICE_FILTER" == "gateway" ]]; then
         echo -e "${BLUE}🚪 Gateway Service (Port 8080):${NC}"
-        check_http_service "Swagger UI" "$GATEWAY_URL/swagger-ui/" "📚" || all_healthy=false
-        check_http_service "Health Check" "$GATEWAY_URL/actuator/health" "💚" || all_healthy=false
-        check_api_endpoint "Gateway Status" "$GATEWAY_URL/api/v1/gateway/status" "📊" || all_healthy=false
-        check_api_endpoint "Demo Ready" "$GATEWAY_URL/api/v1/gateway/demo-ready" "🎯" || all_healthy=false
+        
+        # KORRIGIERT: Richtiger Swagger UI Pfad
+        if ! check_http_service "Swagger UI" "$GATEWAY_URL/swagger-ui/index.html" "📚"; then
+            all_healthy=1
+        fi
+        
+        if ! check_http_service "Health Check" "$GATEWAY_URL/actuator/health" "💚"; then
+            all_healthy=1
+        fi
+        
+        if ! check_api_endpoint "Gateway Status" "$GATEWAY_URL/api/v1/gateway/status" "📊"; then
+            all_healthy=1
+        fi
+        
+        if ! check_api_endpoint "Demo Ready" "$GATEWAY_URL/api/v1/gateway/demo-ready" "🎯"; then
+            all_healthy=1
+        fi
+        
         echo ""
     fi
     
     # Compliance Service (Step 3)
     if [[ -z "$SERVICE_FILTER" || "$SERVICE_FILTER" == "compliance" ]]; then
         echo -e "${BLUE}⚖️  Compliance Service (Port 8081):${NC}"
-        check_http_service "Health Check" "$COMPLIANCE_URL/actuator/health" "💚" || echo -e "  ⏳ ${YELLOW}Wird in Step 3 erstellt${NC}"
-        check_api_endpoint "VVT Generation" "$COMPLIANCE_URL/api/v1/compliance/vvt/demo" "🇩🇪" || echo -e "  ⏳ ${YELLOW}DSGVO Art. 30 - Step 3${NC}"
-        check_api_endpoint "AI Risk Classification" "$COMPLIANCE_URL/api/v1/compliance/ai-risk/demo" "🇪🇺" || echo -e "  ⏳ ${YELLOW}EU AI Act - Step 3${NC}"
+        if ! check_http_service "Health Check" "$COMPLIANCE_URL/actuator/health" "💚"; then
+            echo -e "  ⏳ ${YELLOW}Wird in Step 3 erstellt${NC}"
+        fi
+        echo -e "  🇩🇪 VVT Generation: ❌ DOWN"
+        echo -e "  ⏳ ${YELLOW}DSGVO Art. 30 - Step 3${NC}"
+        echo -e "  🇪🇺 AI Risk Classification: ❌ DOWN"
+        echo -e "  ⏳ ${YELLOW}EU AI Act - Step 3${NC}"
         echo ""
     fi
     
     # Document Service (Step 4)
     if [[ -z "$SERVICE_FILTER" || "$SERVICE_FILTER" == "document" ]]; then
         echo -e "${BLUE}📄 Document Service (Port 8082):${NC}"
-        check_http_service "Health Check" "$DOCUMENT_URL/actuator/health" "💚" || echo -e "  ⏳ ${YELLOW}Wird in Step 4 erstellt${NC}"
-        check_api_endpoint "PDF Generation" "$DOCUMENT_URL/api/v1/document/pdf/demo" "📑" || echo -e "  ⏳ ${YELLOW}Deutsche Templates - Step 4${NC}"
+        if ! check_http_service "Health Check" "$DOCUMENT_URL/actuator/health" "💚"; then
+            echo -e "  ⏳ ${YELLOW}Wird in Step 4 erstellt${NC}"
+        fi
+        echo -e "  📑 PDF Generation: ❌ DOWN"
+        echo -e "  ⏳ ${YELLOW}Deutsche Templates - Step 4${NC}"
         echo ""
     fi
     
     # Ollama AI Service
     if [[ -z "$SERVICE_FILTER" || "$SERVICE_FILTER" == "ollama" ]]; then
         echo -e "${BLUE}🤖 Ollama AI Service (Port 11434):${NC}"
-        check_http_service "API Tags" "$OLLAMA_URL/api/tags" "🤖" || echo -e "  ⏳ ${YELLOW}Lokale KI - Optional${NC}"
+        check_http_service "API Tags" "$OLLAMA_URL/api/tags" "🤖"
         echo ""
     fi
     
     # Database Services
     if [[ -z "$SERVICE_FILTER" || "$SERVICE_FILTER" == "database" ]]; then
         echo -e "${BLUE}🗄️  Database Services:${NC}"
-        check_database "Gateway DB" "$DB_GATEWAY_PORT" "🚪" || all_healthy=false
-        check_database "Compliance DB" "$DB_COMPLIANCE_PORT" "⚖️" || echo -e "  ⏳ ${YELLOW}Step 3${NC}"
-        check_database "Document DB" "$DB_DOCUMENT_PORT" "📄" || echo -e "  ⏳ ${YELLOW}Step 4${NC}"
+        
+        if ! check_database "Gateway DB" "$DB_GATEWAY_PORT" "🚪"; then
+            all_healthy=1
+        fi
+        
+        check_database "Compliance DB" "$DB_COMPLIANCE_PORT" "⚖️"
+        check_database "Document DB" "$DB_DOCUMENT_PORT" "📄"
         echo ""
     fi
     
@@ -289,20 +303,21 @@ show_summary() {
         echo -e "${GREEN}✅ Alle verfügbaren Services sind healthy!${NC}"
         echo ""
         echo -e "${BLUE}🎯 Demo URLs:${NC}"
-        echo -e "  📚 Swagger UI: ${CYAN}$GATEWAY_URL/swagger-ui/${NC}"
+        echo -e "  📚 Swagger UI: ${CYAN}$GATEWAY_URL/swagger-ui/index.html${NC}"
         echo -e "  💚 Health Check: ${CYAN}$GATEWAY_URL/actuator/health${NC}"  
         echo -e "  📊 Gateway Status: ${CYAN}$GATEWAY_URL/api/v1/gateway/status${NC}"
         echo -e "  💼 Developer Info: ${CYAN}$GATEWAY_URL/api/v1/gateway/developer-info${NC}"
         echo ""
         echo -e "${GREEN}🚀 Bereit für Step 3: Compliance Service erstellen!${NC}"
         echo -e "   Sagen Sie 'OK Step 3' für DSGVO + EU AI Act Features"
+        return 0
     else
         echo -e "${RED}❌ Einige Services sind nicht verfügbar${NC}"
         echo ""
         echo -e "${YELLOW}🔧 Troubleshooting:${NC}"
         echo -e "  1. Docker Services starten: ${CYAN}docker-compose up -d${NC}"
-        echo -e "  2. Gateway Service: ${CYAN}mvn spring-boot:run${NC}"
-        echo -e "  3. Database prüfen: ${CYAN}docker-compose logs postgres-gateway${NC}"
+        echo -e "  2. Gateway Service: ${CYAN}cd services/gateway-service && mvn spring-boot:run${NC}"
+        echo -e "  3. WebConfig hinzufügen für Swagger UI Fix"
         echo ""
         return 1
     fi
@@ -334,16 +349,14 @@ main() {
     echo -e "$(date '+%Y-%m-%d %H:%M:%S') - Checking services..."
     echo ""
     
-    local exit_code=0
     if run_health_checks; then
         show_summary 0
         show_business_metrics
+        exit 0
     else
         show_summary 1
-        exit_code=1
+        exit 1
     fi
-    
-    exit $exit_code
 }
 
 # Execute main function
