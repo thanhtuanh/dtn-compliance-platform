@@ -1,0 +1,274 @@
+# DTN Document Service Configuration
+# PDF Generation Service für DSGVO VVT und DSFA
+
+# Server Configuration
+server:
+  port: 8082
+  servlet:
+    context-path: ""
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+  error:
+    include-message: always
+    include-binding-errors: always
+    include-stacktrace: on_param
+    include-exception: false
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain,application/pdf
+    min-response-size: 1024
+
+# Spring Configuration
+spring:
+  application:
+    name: dtn-document-service
+  
+  # Profile Configuration
+  profiles:
+    active: dev
+  
+  # FreeMarker Template Configuration
+  freemarker:
+    template-loader-path: classpath:/templates/
+    suffix: .ftl
+    charset: UTF-8
+    check-template-location: true
+    expose-request-attributes: false
+    expose-session-attributes: false
+    expose-spring-macro-helpers: true
+    prefer-file-system-access: false
+    settings:
+      locale: de_DE
+      default_encoding: UTF-8
+      date_format: dd.MM.yyyy
+      time_format: HH:mm:ss
+      datetime_format: dd.MM.yyyy HH:mm:ss
+      number_format: "#,##0.##"
+      boolean_format: "true,false"
+      output_encoding: UTF-8
+      whitespace_stripping: true
+      auto_flush: true
+      
+  # Web Configuration
+  web:
+    resources:
+      static-locations: classpath:/static/,classpath:/templates/
+      cache:
+        period: 3600
+        
+  # Servlet Configuration
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+      enabled: true
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      show-components: always
+    info:
+      enabled: true
+  info:
+    env:
+      enabled: true
+    java:
+      enabled: true
+    os:
+      enabled: true
+  health:
+    diskspace:
+      enabled: true
+      threshold: 100MB
+
+# Logging Configuration
+logging:
+  level:
+    com.dtn.document: INFO
+    org.springframework.web: INFO
+    org.springframework.boot: INFO
+    org.xhtmlrenderer: WARN
+    com.itextpdf: WARN
+    freemarker: WARN
+    root: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %5level %logger{36} - %msg%n"
+  file:
+    name: logs/dtn-document-service.log
+    max-size: 100MB
+    max-history: 30
+
+# SpringDoc OpenAPI Configuration
+springdoc:
+  api-docs:
+    path: /api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    try-it-out-enabled: true
+    operations-sorter: method
+    tags-sorter: alpha
+    disable-swagger-default-url: true
+    display-request-duration: true
+    show-common-extensions: true
+    config-url: /api-docs/swagger-config
+    doc-expansion: none
+  show-actuator: true
+  group-configs:
+    - group: 'document-api'
+      display-name: 'DTN Document Service API'
+      paths-to-match: '/api/**'
+
+# DTN Document Service Custom Configuration
+dtn:
+  document:
+    # PDF Generation Settings
+    pdf:
+      default-format: A4
+      margin:
+        top: 20mm
+        bottom: 20mm
+        left: 20mm
+        right: 20mm
+      font:
+        family: DejaVu Sans
+        size: 10
+        encoding: UTF-8
+      quality: high
+      compression: true
+      
+    # Template Settings
+    templates:
+      base-path: classpath:/templates/german/
+      vvt-template: vvt-template.ftl
+      dsfa-template: dsfa-template.ftl
+      header-template: header-template.ftl
+      footer-template: footer-template.ftl
+      cache-enabled: true
+      cache-ttl: 3600
+      
+    # Corporate Design
+    branding:
+      logo-path: /static/images/dtn-logo.png
+      company-name: "DTN Compliance Solutions"
+      company-address: "Musterstraße 123, 80331 München"
+      company-phone: "+49 89 12345678"
+      company-email: "compliance@dtn-solutions.de"
+      website: "https://dtn-solutions.de"
+      primary-color: "#1f4e79"
+      secondary-color: "#6c757d"
+      
+    # Document Metadata
+    metadata:
+      author: "DTN Compliance Platform"
+      creator: "DTN Document Service v1.0.0"
+      title-prefix: "DSGVO Compliance -"
+      subject: "Datenschutz-Dokumentation"
+      keywords: "DSGVO, VVT, DSFA, Compliance, Datenschutz"
+      
+    # Performance Settings
+    performance:
+      max-concurrent-generations: 5
+      timeout-seconds: 30
+      memory-limit-mb: 512
+      enable-caching: true
+      
+    # Export Settings
+    export:
+      formats: [PDF]
+      filename-pattern: "{type}_{organization}_{date}.pdf"
+      date-format: "yyyyMMdd_HHmmss"
+
+# External Service URLs
+services:
+  compliance-service:
+    base-url: http://compliance-service:8081
+    endpoints:
+      vvt: /api/v1/compliance/vvt
+      dsfa: /api/v1/compliance/dsfa
+      health: /actuator/health
+    timeout:
+      connect: 5s
+      read: 30s
+      
+  gateway-service:
+    base-url: http://gateway-service:8080
+    health: /actuator/health
+
+---
+# Development Profile
+spring:
+  config:
+    activate:
+      on-profile: dev
+      
+# Development-specific settings
+dtn:
+  document:
+    templates:
+      cache-enabled: false # Disable caching for development
+    performance:
+      enable-caching: false
+      
+services:
+  compliance-service:
+    base-url: http://localhost:8081
+    
+logging:
+  level:
+    com.dtn.document: DEBUG
+    org.springframework.web: DEBUG
+
+---
+# Docker Profile
+spring:
+  config:
+    activate:
+      on-profile: docker
+
+# Docker-specific settings
+services:
+  compliance-service:
+    base-url: http://compliance-service:8081
+  gateway-service:
+    base-url: http://gateway-service:8080
+
+logging:
+  level:
+    com.dtn.document: INFO
+    
+---
+# Production Profile
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+# Production-specific settings
+server:
+  error:
+    include-stacktrace: never
+    include-exception: false
+    include-message: never
+
+logging:
+  level:
+    com.dtn.document: WARN
+    root: WARN
+    
+dtn:
+  document:
+    performance:
+      max-concurrent-generations: 10
+      memory-limit-mb: 1024
