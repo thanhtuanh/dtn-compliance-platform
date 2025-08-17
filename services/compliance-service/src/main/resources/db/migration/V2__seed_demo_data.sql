@@ -219,7 +219,7 @@ INSERT INTO compliance_reports (
     4,
     1,
     2,
-    ARRAY[],
+    ARRAY[]::text[],  -- Expliziter Cast zu text[]
     1800
 );
 
