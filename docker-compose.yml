@@ -5,7 +5,6 @@
 # Version: 5.1 - Fixed Dependencies & Startup Order
 # Business Value: 96.960€ Jahresersparnis für 100-MA Unternehmen
 
-version: '3.8'
 
 services:
   #################################
