@@ -24,9 +24,6 @@ services:
       - "5432:5432"
     volumes:
       - postgres_gateway_data:/var/lib/postgresql/data
-      # Entfernt problematische Init-Scripts für jetzt
-      # - ./scripts/init-gateway-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
-      # - ./scripts/gateway-test-data.sql:/docker-entrypoint-initdb.d/02-test-data.sql:ro
     networks:
       - dtn-network
     healthcheck:
@@ -53,9 +50,6 @@ services:
       - "5433:5432"
     volumes:
       - postgres_compliance_data:/var/lib/postgresql/data
-      # Entfernt problematische Init-Scripts für jetzt
-      # - ./scripts/init-compliance-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
-      # - ./scripts/compliance-test-data.sql:/docker-entrypoint-initdb.d/02-test-data.sql:ro
     networks:
       - dtn-network
     healthcheck:
@@ -82,9 +76,6 @@ services:
       - "5434:5432"
     volumes:
       - postgres_document_data:/var/lib/postgresql/data
-      # Entfernt problematische Init-Scripts für jetzt
-      # - ./scripts/init-document-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
-      # - ./scripts/document-test-data.sql:/docker-entrypoint-initdb.d/02-test-data.sql:ro
     networks:
       - dtn-network
     healthcheck:
@@ -434,8 +425,6 @@ services:
       - "5050:80"
     volumes:
       - pgadmin_data:/var/lib/pgadmin
-      # Entfernt problematische Server-Config für jetzt
-      # - ./scripts/pgadmin-servers.json:/pgadmin4/servers.json:ro
     networks:
       - dtn-network
     depends_on:
