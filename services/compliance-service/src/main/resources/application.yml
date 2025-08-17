@@ -1,336 +1,61 @@
-# DTN Compliance Service Configuration
-# DSGVO + EU AI Act konforme KI-Lösung für deutsche Unternehmen
-
 server:
   port: 8081
-  servlet:
-    context-path: /
-  compression:
-    enabled: true
-  error:
-    include-message: always
-    include-stacktrace: on_param
 
 spring:
   application:
     name: dtn-compliance-service
-  
-  # Profile für verschiedene Umgebungen
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:local}
   
-  # Database Configuration (Compliance-spezifisch)
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5433}/${DB_NAME:dtn_compliance}
     username: ${DB_USER:dtn_user}
     password: ${DB_PASSWORD:dtn_password}
     driver-class-name: org.postgresql.Driver
-    hikari:
-      maximum-pool-size: 20
-      minimum-idle: 5
-      idle-timeout: 300000
-      connection-timeout: 20000
-      leak-detection-threshold: 60000
-      pool-name: DTN-Compliance-HikariCP
-  
-  # JPA Configuration für Compliance-Entities
-  jpa:
-    hibernate:
-      ddl-auto: validate  # Flyway managed
-    show-sql: false
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
-        jdbc:
-          time_zone: Europe/Berlin
-        enable_lazy_load_no_trans: true
-        order_inserts: true
-        order_updates: true
-        batch_size: 25
-  
-  # Flyway Database Migration
-  flyway:
-    enabled: true
-    baseline-on-migrate: true
-    locations: classpath:db/migration
-    schemas: public
-    table: compliance_schema_version
-    
-  # Freemarker Templates für deutsche Compliance-Dokumente
-  freemarker:
-    enabled: true
-    template-loader-path: classpath:/templates/
-    suffix: .ftl
-    charset: UTF-8
-    expose-request-attributes: true
-    expose-session-attributes: true
-    cache: true
-    settings:
-      locale: de_DE
-      date_format: dd.MM.yyyy
-      datetime_format: dd.MM.yyyy HH:mm:ss
-      number_format: "#,##0.##"
-
-  # Spring AI Configuration für lokale KI (Ollama)
-  ai:
-    ollama:
-      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
-      chat:
-        model: ${AI_MODEL_NAME:llama2:7b}
-        options:
-          temperature: 0.1  # Konsistente Antworten für Compliance
-          num-predict: 2048
-          num-ctx: 4096
-          top-k: 10
-          top-p: 0.3
-      embedding:
-        model: ${AI_EMBEDDING_MODEL:llama2:7b}
-        options:
-          num-predict: 512
-
-  # Mail Configuration für Compliance-Reports
-  mail:
-    host: ${MAIL_HOST:localhost}
-    port: ${MAIL_PORT:1025}
-    username: ${MAIL_USERNAME:}
-    password: ${MAIL_PASSWORD:}
-    properties:
-      mail:
-        smtp:
-          auth: false
-          starttls:
-            enable: false
-
-# DTN Compliance Configuration
-dtn:
-  compliance:
-    # DSGVO Konfiguration
-    gdpr:
-      enabled: true
-      logging-enabled: ${GDPR_LOGGING_ENABLED:true}
-      data-retention-days: ${DATA_RETENTION_DAYS:365}
-      audit-log-level: ${AUDIT_LOG_LEVEL:INFO}
-      german-dpa-reporting: ${GERMAN_DPA_REPORTING:true}
-      bfdi-compatible: ${BFDI_COMPATIBLE:true}
-      
-      # VVT (Art. 30) Konfiguration
-      vvt:
-        auto-generation: true
-        template-language: DE
-        export-formats: PDF,CSV,XML,JSON
-        update-interval-days: 30
-        include-technical-measures: true
-        include-organizational-measures: true
-        
-      # DSFA (Art. 35) Konfiguration
-      dsfa:
-        auto-assessment: true
-        risk-threshold: 0.7
-        include-ai-systems: true
-        template-version: "2024-v1"
-        
-    # EU AI Act Konfiguration (seit Februar 2025)
-    ai-act:
-      enabled: ${EU_AI_ACT_ENABLED:true}
-      risk-classification: ${AI_RISK_CLASSIFICATION:true}
-      prohibited-practices-check: ${PROHIBITED_PRACTICES_CHECK:true}
-      high-risk-documentation: ${HIGH_RISK_DOCUMENTATION:true}
-      
-      # Risikoklassifizierung
-      risk-assessment:
-        auto-classification: true
-        include-biometric: true
-        include-emotion-recognition: true
-        include-critical-infrastructure: true
-        update-frequency: "monthly"
-        
-      # CE-Kennzeichnung Support
-      ce-marking:
-        preparation-mode: true
-        documentation-language: DE
-        conformity-assessment: true
-    
-    # Lokale KI Konfiguration (Privacy by Design)
-    local-ai:
-      enabled: ${LOCAL_AI_ENABLED:true}
-      provider: ollama
-      fallback-enabled: false  # Kein Fallback auf externe APIs
-      data-anonymization: true
-      language-preference: DE
-      
-      # Prompt Templates für deutsche Compliance
-      templates:
-        vvt-generation: "classpath:prompts/vvt-generation-de.txt"
-        dsfa-assessment: "classpath:prompts/dsfa-assessment-de.txt"
-        ai-risk-classification: "classpath:prompts/ai-risk-classification-de.txt"
-        
-    # Reporting & Export
-    reporting:
-      default-language: DE
-      include-legal-references: true
-      auto-backup: true
-      backup-retention-days: 730
-      
-      # Export-Formate
-      formats:
-        pdf:
-          enabled: true
-          template: "classpath:templates/pdf/compliance-report-de.ftl"
-        csv:
-          enabled: true
-          delimiter: ";"
-          encoding: UTF-8
-        xml:
-          enabled: true
-          schema-validation: true
-
-# Service URLs
-services:
-  gateway:
-    url: ${GATEWAY_SERVICE_URL:http://localhost:8080}
-  document:
-    url: ${DOCUMENT_SERVICE_URL:http://localhost:8082}
-
-# Actuator für Health Checks und Monitoring
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,metrics,prometheus,flyway
-      base-path: /actuator
-  endpoint:
-    health:
-      show-details: always
-      show-components: always
-      group:
-        compliance:
-          include: db,diskSpace,ollama
-        gdpr:
-          include: db,vvt,dsfa
-        ai-act:
-          include: aiRisk,prohibitedPractices
-  health:
-    db:
-      enabled: true
-    diskspace:
-      enabled: true
-  info:
-    env:
-      enabled: true
-    java:
-      enabled: true
-    os:
-      enabled: true
-  metrics:
-    export:
-      prometheus:
-        enabled: true
-    tags:
-      service: compliance
-      version: 1.0.0
-
-# Swagger/OpenAPI 3 Configuration
-springdoc:
-  swagger-ui:
-    path: /swagger-ui.html
-    enabled: true
-    tags-sorter: alpha
-    operations-sorter: method
-    disable-swagger-default-url: true
-    display-request-duration: true
-    doc-expansion: none
-    show-extensions: true
-    groups-order: DESC
-  api-docs:
-    path: /v3/api-docs
-    enabled: true
-  show-actuator: true
-  group-configs:
-    - group: DSGVO
-      paths-to-match: 
-        - /api/v1/compliance/vvt/**
-        - /api/v1/compliance/dsfa/**
-    - group: EU AI Act
-      paths-to-match:
-        - /api/v1/compliance/ai-risk/**
-        - /api/v1/compliance/prohibited/**
-    - group: Demo
-      paths-to-match:
-        - /api/v1/compliance/demo/**
-
-# Logging Configuration (DSGVO-konform)
-logging:
-  level:
-    com.dtn.compliance: ${LOG_LEVEL:INFO}
-    org.springframework.ai: INFO
-    org.springframework.web: WARN
-    org.hibernate.SQL: WARN
-    org.flywaydb: INFO
-    ollama: INFO
-  pattern:
-    file: '%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%logger{36}] - %msg%n'
-    console: '%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n'
-  file:
-    name: logs/compliance/dtn-compliance.log
-    max-size: 50MB
-    max-history: 30
-
-# CORS Configuration für API-Integration
-cors:
-  allowed-origins:
-    - http://localhost:8080  # Gateway Service
-    - http://localhost:3000  # React Frontend
-    - http://localhost:4200  # Angular Frontend
-    - https://dtn-frontend.onrender.com  # Production
-  allowed-methods:
-    - GET
-    - POST
-    - PUT
-    - DELETE
-    - OPTIONS
-    - PATCH
-  allowed-headers:
-    - Authorization
-    - Content-Type
-    - X-Requested-With
-    - Accept
-    - X-Compliance-Token
-  exposed-headers:
-    - X-Total-Count
-    - X-Compliance-Score
-    - X-GDPR-Status
-  allow-credentials: true
-  max-age: 3600
-
----
-# Local Development Profile
-spring:
-  config:
-    activate:
-      on-profile: local
-  
-  datasource:
-    url: jdbc:postgresql://localhost:5433/dtn_compliance
-    username: dtn_user
-    password: dtn_password
   
   jpa:
     hibernate:
       ddl-auto: validate
-    show-sql: true
-    
-  ai:
-    ollama:
-      base-url: http://localhost:11434
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
 
-# Debug Logging für lokale Entwicklung
+# Actuator ohne problematische Health Checks
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+  health:
+    db:
+      enabled: true
+    mail:
+      enabled: false  # Disable mail health check
+
+# Swagger UI
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+
+# Logging
 logging:
   level:
-    com.dtn.compliance: DEBUG
-    org.springframework.ai: DEBUG
-    org.springframework.web: DEBUG
-    org.hibernate.SQL: DEBUG
+    com.dtn.compliance: INFO
+    org.springframework.web: WARN
 
 ---
 # Docker Profile
@@ -338,60 +63,7 @@ spring:
   config:
     activate:
       on-profile: docker
-
   datasource:
     url: jdbc:postgresql://${DB_HOST:postgres-compliance}:${DB_PORT:5432}/${DB_NAME:dtn_compliance}
     username: ${DB_USER:dtn_user}
     password: ${DB_PASSWORD:dtn_password}
-
-  ai:
-    ollama:
-      base-url: http://${OLLAMA_HOST:ollama}:${OLLAMA_PORT:11434}
-
-# Container-optimiertes Logging
-logging:
-  level:
-    com.dtn.compliance: INFO
-    org.springframework.ai: INFO
-  pattern:
-    console: '{"timestamp":"%d{yyyy-MM-dd HH:mm:ss.SSS}","level":"%-5level","thread":"%thread","logger":"%logger{36}","message":"%msg"}%n'
-
----
-# Production Profile (Render.com)
-spring:
-  config:
-    activate:
-      on-profile: production
-
-  datasource:
-    url: ${DATABASE_URL}
-    username: ${DB_USER}
-    password: ${DB_PASSWORD}
-    hikari:
-      maximum-pool-size: 30
-      minimum-idle: 10
-
-  jpa:
-    hibernate:
-      ddl-auto: validate
-    show-sql: false
-
-  ai:
-    ollama:
-      base-url: ${OLLAMA_BASE_URL}
-
-# Production Logging (strukturiert für Monitoring)
-logging:
-  level:
-    com.dtn.compliance: INFO
-    org.springframework.ai: WARN
-    org.springframework.web: WARN
-    org.hibernate.SQL: WARN
-  pattern:
-    file: '{"timestamp":"%d{yyyy-MM-dd HH:mm:ss.SSS}","level":"%level","thread":"%thread","logger":"%logger{36}","message":"%msg","service":"compliance","version":"1.0.0"}%n'
-
-# Production Security
-management:
-  endpoint:
-    health:
-      show-details: when-authorized

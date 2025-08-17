@@ -1,97 +1,115 @@
--- V1__init_compliance_schema.sql
--- DTN Compliance Service - PostgreSQL Schema
--- DSGVO + EU AI Act konforme Datenbankstruktur
+-- DTN Compliance Service - Initial Schema
+-- DSGVO + EU AI Act Database Schema
 
--- Extensions
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
--- Processing Activities (DSGVO Art. 30 VVT)
+-- Processing Activities Table (VVT - Verzeichnis der Verarbeitungstätigkeiten)
 CREATE TABLE processing_activities (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name VARCHAR(255) NOT NULL,
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(200) NOT NULL,
     purpose TEXT NOT NULL,
+    data_subject_categories TEXT[], -- Array of categories
+    data_categories TEXT[], -- Array of data types
+    recipients TEXT[], -- Array of recipients
+    third_country_transfer BOOLEAN DEFAULT false,
+    retention_period VARCHAR(500),
     legal_basis VARCHAR(500) NOT NULL,
-    data_categories TEXT[],
-    data_subject_categories TEXT[],
-    recipients TEXT[],
-    third_country_transfer BOOLEAN DEFAULT FALSE,
-    retention_period VARCHAR(255),
     technical_measures TEXT[],
     organizational_measures TEXT[],
-    risk_level VARCHAR(50) DEFAULT 'niedrig',
-    dsfa_required BOOLEAN DEFAULT FALSE,
+    risk_level VARCHAR(20) DEFAULT 'niedrig',
+    dsfa_required BOOLEAN DEFAULT false,
     comments TEXT,
+    company_name VARCHAR(200),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(255),
-    updated_by VARCHAR(255)
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_processing_activities_name ON processing_activities(name);
-CREATE INDEX idx_processing_activities_risk ON processing_activities(risk_level);
-CREATE INDEX idx_processing_activities_dsfa ON processing_activities(dsfa_required);
-
--- AI Systems (EU AI Act)
-CREATE TABLE ai_systems (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    system_name VARCHAR(255) NOT NULL,
-    system_type VARCHAR(255) NOT NULL,
-    application_domain VARCHAR(255) NOT NULL,
-    risk_level VARCHAR(50) NOT NULL,
-    risk_score DECIMAL(3,2) DEFAULT 0.0,
-    prohibited_practice BOOLEAN DEFAULT FALSE,
-    ce_marking_required BOOLEAN DEFAULT FALSE,
-    conformity_assessment_required BOOLEAN DEFAULT FALSE,
-    transparency_obligations_required BOOLEAN DEFAULT FALSE,
-    risk_factors TEXT[],
-    compliance_measures TEXT[],
-    estimated_affected_persons INTEGER DEFAULT 0,
-    geographic_scope VARCHAR(50) DEFAULT 'NATIONAL',
-    classified_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    validity_months INTEGER DEFAULT 12,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(255),
-    updated_by VARCHAR(255)
-);
-
-CREATE INDEX idx_ai_systems_name ON ai_systems(system_name);
-CREATE INDEX idx_ai_systems_risk ON ai_systems(risk_level);
-CREATE INDEX idx_ai_systems_prohibited ON ai_systems(prohibited_practice);
-CREATE INDEX idx_ai_systems_ce_marking ON ai_systems(ce_marking_required);
-
--- DSFA Assessments (DSGVO Art. 35)
+-- DSFA Assessments Table (Datenschutz-Folgenabschätzung)
 CREATE TABLE dsfa_assessments (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    processing_name VARCHAR(255) NOT NULL,
+    id BIGSERIAL PRIMARY KEY,
+    processing_name VARCHAR(200) NOT NULL,
     processing_description TEXT,
-    risk_score DECIMAL(3,2) NOT NULL,
-    risk_level VARCHAR(50) NOT NULL,
-    dsfa_required BOOLEAN NOT NULL,
-    identified_risks TEXT[],
-    recommended_measures TEXT[],
-    compliance_status VARCHAR(255),
-    ai_act_assessment_performed BOOLEAN DEFAULT FALSE,
-    ai_risk_class VARCHAR(50),
-    authority_consultation_required BOOLEAN DEFAULT FALSE,
-    assessed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    next_review_months INTEGER DEFAULT 12,
+    data_types TEXT[],
+    purposes TEXT[],
+    technologies TEXT[],
+    data_subjects TEXT[],
+    estimated_data_subjects INTEGER DEFAULT 1000,
+    processing_duration_months INTEGER DEFAULT 12,
+    special_categories BOOLEAN DEFAULT false,
+    third_country_transfer BOOLEAN DEFAULT false,
+    automated_decision_making BOOLEAN DEFAULT false,
+    systematic_monitoring BOOLEAN DEFAULT false,
+    vulnerable_groups BOOLEAN DEFAULT false,
+    large_scale BOOLEAN DEFAULT false,
+    data_matching BOOLEAN DEFAULT false,
+    innovative_technology BOOLEAN DEFAULT false,
+    prevents_rights_exercise BOOLEAN DEFAULT false,
+    risk_score DECIMAL(3,2),
+    risk_level VARCHAR(20),
+    dsfa_required BOOLEAN,
+    compliance_status VARCHAR(100),
+    additional_info TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(255),
-    updated_by VARCHAR(255)
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_dsfa_assessments_name ON dsfa_assessments(processing_name);
-CREATE INDEX idx_dsfa_assessments_risk ON dsfa_assessments(risk_level);
-CREATE INDEX idx_dsfa_assessments_required ON dsfa_assessments(dsfa_required);
+-- AI Risk Classifications Table (EU AI Act)
+CREATE TABLE ai_risk_classifications (
+    id BIGSERIAL PRIMARY KEY,
+    system_name VARCHAR(200) NOT NULL,
+    system_type VARCHAR(100),
+    application_domain VARCHAR(100),
+    system_description TEXT,
+    data_types TEXT[],
+    estimated_affected_persons INTEGER DEFAULT 1000,
+    geographic_scope VARCHAR(20) DEFAULT 'NATIONAL',
+    user_interaction BOOLEAN DEFAULT false,
+    automated_decision_making BOOLEAN DEFAULT false,
+    biometric_data BOOLEAN DEFAULT false,
+    emotion_recognition BOOLEAN DEFAULT false,
+    critical_infrastructure BOOLEAN DEFAULT false,
+    education_context BOOLEAN DEFAULT false,
+    employment_context BOOLEAN DEFAULT false,
+    essential_services BOOLEAN DEFAULT false,
+    law_enforcement BOOLEAN DEFAULT false,
+    migration_asylum_border BOOLEAN DEFAULT false,
+    justice_and_democracy BOOLEAN DEFAULT false,
+    credit_scoring BOOLEAN DEFAULT false,
+    insurance_risk_assessment BOOLEAN DEFAULT false,
+    emergency_services BOOLEAN DEFAULT false,
+    safety_components BOOLEAN DEFAULT false,
+    minors_data BOOLEAN DEFAULT false,
+    public_spaces BOOLEAN DEFAULT false,
+    large_scale BOOLEAN DEFAULT false,
+    risk_level VARCHAR(30),
+    risk_score DECIMAL(3,2),
+    prohibited_practice BOOLEAN DEFAULT false,
+    ce_marking_required BOOLEAN DEFAULT false,
+    conformity_assessment_required BOOLEAN DEFAULT false,
+    transparency_obligations_required BOOLEAN DEFAULT false,
+    additional_info TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- VVT Generation Logs
+CREATE TABLE vvt_generations (
+    id BIGSERIAL PRIMARY KEY,
+    company_name VARCHAR(200) NOT NULL,
+    industry VARCHAR(100),
+    employee_count INTEGER,
+    total_activities INTEGER,
+    compliance_score DECIMAL(5,2),
+    processing_time_ms BIGINT,
+    success BOOLEAN DEFAULT true,
+    error_message TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
 
 -- Compliance Reports
 CREATE TABLE compliance_reports (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    report_type VARCHAR(50) NOT NULL,
-    format VARCHAR(20) NOT NULL,
-    organization VARCHAR(255),
+    id BIGSERIAL PRIMARY KEY,
+    organization VARCHAR(200),
+    report_type VARCHAR(50),
+    format VARCHAR(10),
     overall_compliance_score DECIMAL(5,2),
     gdpr_status VARCHAR(50),
     ai_act_status VARCHAR(50),
@@ -99,126 +117,27 @@ CREATE TABLE compliance_reports (
     dsfa_assessments INTEGER DEFAULT 0,
     ai_systems INTEGER DEFAULT 0,
     critical_issues TEXT[],
-    recommended_actions TEXT[],
     file_path VARCHAR(500),
     file_size_bytes BIGINT,
-    generated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    valid_until TIMESTAMP WITH TIME ZONE,
-    created_by VARCHAR(255)
+    processing_time_ms BIGINT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    valid_until TIMESTAMP WITH TIME ZONE
 );
 
-CREATE INDEX idx_compliance_reports_type ON compliance_reports(report_type);
+-- Indexes for better performance
+CREATE INDEX idx_processing_activities_company ON processing_activities(company_name);
+CREATE INDEX idx_processing_activities_risk ON processing_activities(risk_level);
+CREATE INDEX idx_dsfa_assessments_risk ON dsfa_assessments(risk_level);
+CREATE INDEX idx_dsfa_assessments_required ON dsfa_assessments(dsfa_required);
+CREATE INDEX idx_ai_risk_level ON ai_risk_classifications(risk_level);
+CREATE INDEX idx_ai_prohibited ON ai_risk_classifications(prohibited_practice);
+CREATE INDEX idx_vvt_generations_company ON vvt_generations(company_name);
 CREATE INDEX idx_compliance_reports_org ON compliance_reports(organization);
-CREATE INDEX idx_compliance_reports_generated ON compliance_reports(generated_at);
+CREATE INDEX idx_compliance_reports_type ON compliance_reports(report_type);
 
--- Audit Log (DSGVO-konform)
-CREATE TABLE compliance_audit_log (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    entity_type VARCHAR(100) NOT NULL,
-    entity_id UUID,
-    action VARCHAR(50) NOT NULL,
-    old_values JSONB,
-    new_values JSONB,
-    user_id VARCHAR(255),
-    ip_address INET,
-    user_agent TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_audit_log_entity ON compliance_audit_log(entity_type, entity_id);
-CREATE INDEX idx_audit_log_action ON compliance_audit_log(action);
-CREATE INDEX idx_audit_log_user ON compliance_audit_log(user_id);
-CREATE INDEX idx_audit_log_created ON compliance_audit_log(created_at);
-
--- Business Metrics (für ROI-Berechnung)
-CREATE TABLE business_metrics (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    metric_name VARCHAR(255) NOT NULL,
-    metric_value DECIMAL(12,2),
-    metric_unit VARCHAR(50),
-    metric_description TEXT,
-    calculation_date DATE DEFAULT CURRENT_DATE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_business_metrics_name ON business_metrics(metric_name);
-CREATE INDEX idx_business_metrics_date ON business_metrics(calculation_date);
-
--- Demo Data für Bewerbungsgespräche
-INSERT INTO processing_activities (
-    name, purpose, legal_basis, data_categories, data_subject_categories, 
-    recipients, third_country_transfer, retention_period, 
-    technical_measures, organizational_measures, risk_level, dsfa_required, comments
-) VALUES 
-(
-    'Mitarbeiterdatenverwaltung',
-    'Personalverwaltung, Gehaltsabrechnung, Sozialversicherung',
-    'Art. 6 Abs. 1 lit. b, c DSGVO (Vertrag, rechtliche Verpflichtung), § 26 BDSG',
-    ARRAY['Stammdaten', 'Gehaltsdaten', 'Arbeitszeitdaten', 'Bewerbungsunterlagen'],
-    ARRAY['Mitarbeiter', 'Bewerber', 'Praktikanten'],
-    ARRAY['Lohnbuchhaltung', 'Sozialversicherungsträger', 'Finanzamt'],
-    FALSE,
-    '10 Jahre nach Beendigung des Arbeitsverhältnisses',
-    ARRAY['AES-256 Verschlüsselung', 'Rollenbasierte Zugriffskontrolle', 'Audit-Logging'],
-    ARRAY['Datenschutzschulung', 'Berechtigungskonzept', 'Incident Response Plan'],
-    'niedrig',
-    FALSE,
-    'Standard HR-Verarbeitung nach deutschem Arbeitsrecht'
-),
-(
-    'KI-basierte Kundensegmentierung',
-    'Automatisierte Analyse von Kundendaten zur Segmentierung für personalisierte Marketing-Kampagnen',
-    'Art. 6 Abs. 1 lit. a DSGVO (Einwilligung), Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse)',
-    ARRAY['Kundendaten', 'Kaufverhalten', 'Demografische Daten', 'Präferenzen'],
-    ARRAY['Kunden', 'Interessenten', 'Website-Besucher'],
-    ARRAY['Lokale KI-Systeme (Ollama)', 'Marketing-Team', 'Analytics-Platform'],
-    FALSE,
-    '2 Jahre für ML-Trainingsdaten, 6 Monate für Inferenz-Logs',
-    ARRAY['Lokale KI-Verarbeitung', 'Pseudonymisierung', 'Datenminimierung'],
-    ARRAY['AI Ethics Guidelines', 'Algorithmic Bias Monitoring', 'Human-in-the-Loop'],
-    'mittel',
-    TRUE,
-    'EU AI Act Compliance erforderlich - Risikoklassifizierung durchführen'
-);
-
-INSERT INTO ai_systems (
-    system_name, system_type, application_domain, risk_level, risk_score,
-    prohibited_practice, ce_marking_required, conformity_assessment_required,
-    transparency_obligations_required, risk_factors, compliance_measures,
-    estimated_affected_persons, geographic_scope
-) VALUES 
-(
-    'E-Commerce Recommendation Engine',
-    'Recommendation System',
-    'E-Commerce',
-    'LIMITED_RISK',
-    0.3,
-    FALSE,
-    FALSE,
-    FALSE,
-    TRUE,
-    ARRAY['Automatisierte Produktempfehlungen', 'Personalisierung basierend auf Nutzerverhalten'],
-    ARRAY['Nutzer über KI-System informieren', 'Algorithmic Decision Making transparent machen'],
-    50000,
-    'EU'
-);
-
-INSERT INTO business_metrics (metric_name, metric_value, metric_unit, metric_description) VALUES
-('VVT_Automation_Savings', 45000, 'EUR', 'Jährliche Kostenersparnis durch VVT-Automatisierung'),
-('DSFA_Automation_Savings', 30720, 'EUR', 'Jährliche Kostenersparnis durch DSFA-Automatisierung'),
-('AI_Act_Compliance_Savings', 21000, 'EUR', 'Jährliche Kostenersparnis durch AI Risk Assessment'),
-('Time_Efficiency_Gain', 87.5, 'Percent', 'Durchschnittliche Zeitersparnis durch Automatisierung'),
-('Overall_ROI', 340, 'Percent', 'Return on Investment im ersten Jahr');
-
--- Trigger für updated_at
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
-    RETURN NEW;
-END;
-$$ language 'plpgsql';
-
-CREATE TRIGGER update_processing_activities_updated_at BEFORE UPDATE ON processing_activities FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_ai_systems_updated_at BEFORE UPDATE ON ai_systems FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_dsfa_assessments_updated_at BEFORE UPDATE ON dsfa_assessments FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- Comments for documentation
+COMMENT ON TABLE processing_activities IS 'VVT (Verzeichnis der Verarbeitungstätigkeiten) nach DSGVO Art. 30';
+COMMENT ON TABLE dsfa_assessments IS 'DSFA (Datenschutz-Folgenabschätzung) nach DSGVO Art. 35';
+COMMENT ON TABLE ai_risk_classifications IS 'KI-Risikoklassifizierung nach EU AI Act';
+COMMENT ON TABLE vvt_generations IS 'Log der VVT-Generierungen für Business Metrics';
+COMMENT ON TABLE compliance_reports IS 'Generierte Compliance-Reports (DSGVO + EU AI Act)';

@@ -98,28 +98,28 @@ services:
       SPRING_PROFILES_ACTIVE: docker
       DB_HOST: postgres-gateway
       DB_PORT: 5432
-      DB_NAME: ${POSTGRES_DB_GATEWAY}
-      DB_USER: ${POSTGRES_USER}
-      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: dtn_gateway
+      DB_USER: dtn_user
+      DB_PASSWORD: dtn_secure_2024
       
       # JWT Configuration
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_EXPIRATION: ${JWT_EXPIRATION}
+      JWT_SECRET: dtn_compliance_jwt_secret_2024_very_secure_key_for_production
+      JWT_EXPIRATION: 86400000
       
-      # Frontend URL aus .env
-      FRONTEND_URL: ${FRONTEND_URL}
+      # Frontend URL
+      FRONTEND_URL: http://localhost:3000
       
       # Service URLs
       COMPLIANCE_SERVICE_URL: http://compliance-service:8081
       DOCUMENT_SERVICE_URL: http://document-service:8082
       
       # DSGVO Settings
-      GDPR_LOGGING_ENABLED: ${GDPR_LOGGING_ENABLED}
-      AUDIT_LOG_LEVEL: ${AUDIT_LOG_LEVEL}
+      GDPR_LOGGING_ENABLED: true
+      AUDIT_LOG_LEVEL: INFO
       
       # Demo Configuration
-      DEMO_MODE: ${DEMO_MODE}
-      BUSINESS_VALUE_ANNUAL_SAVINGS: ${BUSINESS_VALUE_ANNUAL_SAVINGS}
+      DEMO_MODE: true
+      BUSINESS_VALUE_ANNUAL_SAVINGS: 96960
       
       # JVM Settings
       JAVA_OPTS: "-Xmx512m -Xms256m"
@@ -140,30 +140,64 @@ services:
     volumes:
       - gateway_logs:/app/logs
 
-  # Compliance Service (wird in Step 3 erstellt)
-  # compliance-service:
-  #   build:
-  #     context: ./services/compliance-service
-  #     dockerfile: Dockerfile
-  #   container_name: dtn-compliance
-  #   environment:
-  #     SPRING_PROFILES_ACTIVE: docker
-  #     DB_HOST: postgres-compliance
-  #     DB_PORT: 5432
-  #     DB_NAME: dtn_compliance
-  #     DB_USER: dtn_user
-  #     DB_PASSWORD: dtn_secure_2024
-  #     OLLAMA_BASE_URL: http://ollama:11434
-  #   ports:
-  #     - "8081:8081"
-  #   depends_on:
-  #     postgres-compliance:
-  #       condition: service_healthy
-  #     ollama:
-  #       condition: service_started
-  #   networks:
-  #     - dtn-network
-  #   restart: unless-stopped
+  # Compliance Service (DSGVO + EU AI Act Engine)
+  compliance-service:
+    build:
+      context: ./services/compliance-service
+      dockerfile: Dockerfile
+    container_name: dtn-compliance
+    environment:
+      # Spring Configuration
+      SPRING_PROFILES_ACTIVE: docker
+      
+      # Database Connection
+      DB_HOST: postgres-compliance
+      DB_PORT: 5432
+      DB_NAME: dtn_compliance
+      DB_USER: dtn_user
+      DB_PASSWORD: dtn_secure_2024
+      
+      # Ollama AI Integration
+      OLLAMA_BASE_URL: http://ollama:11434
+      AI_MODEL_NAME: llama2:7b
+      AI_EMBEDDING_MODEL: llama2:7b
+      
+      # DTN Compliance Settings
+      GDPR_LOGGING_ENABLED: true
+      DATA_RETENTION_DAYS: 365
+      AUDIT_LOG_LEVEL: INFO
+      GERMAN_DPA_REPORTING: true
+      BFDI_COMPATIBLE: true
+      
+      # EU AI Act Settings
+      EU_AI_ACT_ENABLED: true
+      AI_RISK_CLASSIFICATION: true
+      PROHIBITED_PRACTICES_CHECK: true
+      HIGH_RISK_DOCUMENTATION: true
+      
+      # Local AI Settings
+      LOCAL_AI_ENABLED: true
+      
+      # JVM Settings
+      JAVA_OPTS: "-Xmx1g -Xms512m"
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres-compliance:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    networks:
+      - dtn-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    restart: unless-stopped
+    volumes:
+      - compliance_logs:/app/logs
 
   # Document Service (wird in Step 4 erstellt)
   # document-service:
@@ -260,6 +294,9 @@ volumes:
   gateway_logs:
     driver: local
     name: dtn_gateway_logs
+  compliance_logs:
+    driver: local
+    name: dtn_compliance_logs
   ollama_data:
     driver: local
     name: dtn_ollama_data
@@ -280,7 +317,8 @@ volumes:
 #
 # 🌐 Demo URLs:
 #   - Gateway: http://localhost:8080/swagger-ui/
-#   - Health Check: http://localhost:8080/actuator/health
+#   - Compliance: http://localhost:8081/swagger-ui/
+#   - Health Checks: http://localhost:8080/actuator/health
 #   - pgAdmin: http://localhost:5050 (admin@dtn-compliance.de / dtn_admin_2024)
 #   - Ollama: http://localhost:11434/api/tags
 #
@@ -291,4 +329,3 @@ volumes:
 #   - User: dtn_user / Password: dtn_secure_2024
 #
 # 💼 Perfekt für Bewerbungsgespräche und Live-Demos!
-#

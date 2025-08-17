@@ -1,72 +1,72 @@
-# DTN Compliance Service Dockerfile
-# Java 21 + Spring Boot optimiert für Render.com und Docker Compose
+# DTN Compliance Service - Docker Image
+# DSGVO + EU AI Act konforme KI-Lösung für deutsche Unternehmen
 
-# Build Stage
-FROM eclipse-temurin:21-jdk-alpine AS build
+# Multi-stage build für optimierte Image-Größe
+FROM maven:3.9.6-eclipse-temurin-21-alpine AS builder
 
-# Metadata
-LABEL maintainer="DTN Compliance Platform"
-LABEL description="DSGVO + EU AI Act Compliance Service"
-LABEL version="1.0.0"
-
-# Install Maven
-RUN apk add --no-cache maven
-
-# Working directory
+# Build-Umgebung
 WORKDIR /app
-
-# Copy Maven configuration
 COPY pom.xml .
-COPY .mvn .mvn
-COPY mvnw .
-
-# Download dependencies (for Docker layer caching)
-RUN mvn dependency:go-offline -B
-
-# Copy source code
 COPY src ./src
 
-# Build application (skip tests for faster build)
-RUN mvn clean package -DskipTests -Ddependency-check.skip=true
+# Maven Dependencies cachen
+RUN mvn dependency:go-offline -B
 
-# Runtime Stage
-FROM eclipse-temurin:21-jre-alpine AS runtime
+# Application bauen (ohne Tests für schnelleren Build)
+RUN mvn clean package -DskipTests -B
 
-# Install additional packages for production
-RUN apk add --no-cache \
-    curl \
-    wget \
-    tzdata \
-    && cp /usr/share/zoneinfo/Europe/Berlin /etc/localtime \
-    && echo "Europe/Berlin" > /etc/timezone
+# Production Image
+FROM eclipse-temurin:21-jre-alpine
 
-# Create app user for security
-RUN addgroup -g 1001 -S appgroup && \
-    adduser -u 1001 -S appuser -G appgroup
+# Labels für Container-Dokumentation
+LABEL org.opencontainers.image.title="DTN Compliance Service"
+LABEL org.opencontainers.image.description="DSGVO + EU AI Act konforme KI-Lösung"
+LABEL org.opencontainers.image.vendor="DTN Software"
+LABEL org.opencontainers.image.version="1.0.0"
 
-# Working directory
+# Non-root User für Security
+RUN addgroup -g 1001 dtn && \
+    adduser -D -u 1001 -G dtn dtn
+
+# Working Directory
 WORKDIR /app
 
-# Copy built JAR from build stage
-COPY --from=build /app/target/compliance-service-*.jar app.jar
+# System Dependencies für Alpine
+RUN apk add --no-cache \
+    curl \
+    tzdata \
+    && rm -rf /var/cache/apk/*
 
-# Create logs directory
+# Timezone für deutsche Compliance
+ENV TZ=Europe/Berlin
+
+# JAR File kopieren
+COPY --from=builder /app/target/compliance-service-*.jar app.jar
+
+# Logs Directory
 RUN mkdir -p /app/logs && \
-    chown -R appuser:appgroup /app
+    chown -R dtn:dtn /app
 
-# Switch to non-root user
-USER appuser
+# User wechseln
+USER dtn
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+# JVM Optimierung für Container
+ENV JAVA_OPTS="-Xmx1g -Xms512m -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+
+# Health Check für Docker
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
     CMD curl -f http://localhost:8081/actuator/health || exit 1
 
-# Expose port
+# Port Exposition
 EXPOSE 8081
 
-# Environment variables
-ENV SPRING_PROFILES_ACTIVE=docker
-ENV JAVA_OPTS="-Xmx512m -Xms256m -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+# Application Start
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
 
-# Start application
-ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar app.jar"]
+# Demo-Ready Features:
+# - Java 21 Latest LTS
+# - Alpine Linux (Security + Performance)
+# - Non-root User (Security Best Practice)
+# - Health Check integriert
+# - Multi-stage Build (Optimierte Image-Größe)
+# - Deutsche Timezone für Compliance-Logs
