@@ -1,77 +1,117 @@
-# DTN Compliance Platform - Gateway Service Configuration
-# MINIMAL FIX für Step 2 Demo-Readiness
-
-server:
-  port: 8080
-  servlet:
-    context-path: /
-  compression:
-    enabled: true
-  error:
-    include-message: always
-    include-stacktrace: on_param
+# services/gateway-service/src/main/resources/application.yml
+# DTN Compliance Platform - Gateway Service Configuration (Package Fixed)
 
 spring:
   application:
     name: dtn-gateway-service
   
-  profiles:
-    active: ${SPRING_PROFILES_ACTIVE:local}
-  
-  # Database Configuration - FIX: Password korrigiert für Konsistenz
+  # Database Configuration
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:dtn_gateway}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/dtn_gateway}
     username: ${DB_USER:dtn_user}
-    password: ${DB_PASSWORD:dtn_password}  # <-- GEÄNDERT für demo-check.sh Konsistenz
+    password: ${DB_PASSWORD:dtn_secure_2024}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10
       minimum-idle: 5
       idle-timeout: 300000
       connection-timeout: 20000
-      leak-detection-threshold: 60000
+      validation-timeout: 5000
   
+  # JPA Configuration
   jpa:
     hibernate:
-      ddl-auto: update  # <-- GEÄNDERT von create-drop für Development
+      ddl-auto: update
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
     show-sql: false
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
+        use_sql_comments: true
         jdbc:
-          time_zone: Europe/Berlin
+          lob:
+            non_contextual_creation: true
   
-  security:
-    jwt:
-      secret: ${JWT_SECRET:DTN_Compliance_Platform_Secret_Key_2024_DSGVO_EU_AI_Act}
-      expiration: ${JWT_EXPIRATION:86400000}
-      issuer: DTN-Compliance-Platform
+  # Server Configuration
+  main:
+    allow-circular-references: true
+    
+  # JSON Configuration
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    time-zone: Europe/Berlin
 
-# DSGVO Compliance Configuration (unverändert)
+# Server Configuration
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /
+  compression:
+    enabled: true
+  error:
+    include-message: always
+    include-binding-errors: always
+
+# Swagger/OpenAPI Configuration
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    try-it-out-enabled: true
+    operations-sorter: method
+    tags-sorter: alpha
+    doc-expansion: none
+    display-request-duration: true
+    show-extensions: true
+    show-common-extensions: true
+  show-actuator: true
+  default-consumes-media-type: application/json
+  default-produces-media-type: application/json
+
+# DTN Compliance Configuration
 dtn:
   compliance:
+    # Business Configuration
+    demo-mode: ${DEMO_MODE:true}
+    business-value-annual-savings: ${BUSINESS_VALUE_ANNUAL_SAVINGS:96960}
+    company-name: ${COMPANY_NAME:DTN Compliance Platform}
+    
+    # Security Configuration
+    jwt:
+      secret: ${JWT_SECRET:dtn_compliance_jwt_secret_2024_very_secure_key_for_production_use_256_bit}
+      expiration: ${JWT_EXPIRATION:86400000}
+      issuer: ${JWT_ISSUER:dtn-compliance-platform}
+    
+    # CORS Configuration  
+    cors:
+      allowed-origins: ${ALLOWED_ORIGINS:*}
+      allowed-methods: GET,POST,PUT,DELETE,OPTIONS,HEAD
+      allowed-headers: "*"
+      allow-credentials: true
+      max-age: 3600
+    
+    # Microservice URLs
+    services:
+      compliance-url: ${COMPLIANCE_SERVICE_URL:http://localhost:8081}
+      document-url: ${DOCUMENT_SERVICE_URL:http://localhost:8082}
+    
+    # DSGVO Configuration
     gdpr:
       logging-enabled: ${GDPR_LOGGING_ENABLED:true}
-      data-retention-days: ${DATA_RETENTION_DAYS:365}
       audit-log-level: ${AUDIT_LOG_LEVEL:INFO}
-      german-dpa-reporting: ${GERMAN_DPA_REPORTING:true}
-      bfdi-compatible: ${BFDI_COMPATIBLE:true}
+      data-retention-days: ${DATA_RETENTION_DAYS:365}
+      pseudonymization-enabled: ${PSEUDONYMIZATION_ENABLED:true}
     
+    # EU AI Act Configuration
     ai-act:
       enabled: ${EU_AI_ACT_ENABLED:true}
-      risk-classification: ${AI_RISK_CLASSIFICATION:true}
-      prohibited-practices-check: ${PROHIBITED_PRACTICES_CHECK:true}
-      high-risk-documentation: ${HIGH_RISK_DOCUMENTATION:true}
+      governance-enabled: ${AI_GOVERNANCE_ENABLED:true}
 
-# Service URLs
-services:
-  compliance:
-    url: ${COMPLIANCE_SERVICE_URL:http://localhost:8081}
-  document:
-    url: ${DOCUMENT_SERVICE_URL:http://localhost:8082}
-
-# Actuator
+# Management/Actuator Configuration
 management:
   endpoints:
     web:
@@ -80,12 +120,18 @@ management:
       base-path: /actuator
   endpoint:
     health:
-      show-details: always  # <-- GEÄNDERT für besseres Debugging
+      show-details: always
       show-components: always
-  health:
-    db:
+      probes:
+        enabled: true
+    info:
       enabled: true
+    metrics:
+      enabled: true
+  health:
     diskspace:
+      enabled: true
+    db:
       enabled: true
   info:
     env:
@@ -94,101 +140,78 @@ management:
       enabled: true
     os:
       enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
 
-# Swagger/OpenAPI - FIX: Path-Anpassung
-springdoc:
-  swagger-ui:
-    path: /swagger-ui.html
-    enabled: true
-    tags-sorter: alpha
-    operations-sorter: method
-    disable-swagger-default-url: true
-    display-request-duration: true
-    doc-expansion: none
-  api-docs:
-    path: /v3/api-docs
-    enabled: true
-  show-actuator: true
-
-# Logging - DEBUG für Step 2
+# Logging Configuration - KORRIGIERT: com.dtn statt de.dtn
 logging:
   level:
-    com.dtn.gateway: ${LOG_LEVEL:INFO}
+    com.dtn.gateway: ${LOG_LEVEL:INFO}  # <-- KORRIGIERT
     org.springframework.security: WARN
-    org.springframework.web: INFO  # <-- Für Swagger Debugging
-    springdoc: INFO
-  pattern:
-    file: '%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%logger{36}] - %msg%n'
-    console: '%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n'
-  file:
-    name: logs/gateway/dtn-gateway.log
-    max-size: 10MB
-    max-history: 30
-
-# CORS Configuration (unverändert)
-cors:
-  allowed-origins: 
-    - http://localhost:3000
-    - http://localhost:4200
-    - https://dtn-frontend.onrender.com
-  allowed-methods:
-    - GET
-    - POST
-    - PUT
-    - DELETE
-    - OPTIONS
-  allowed-headers:
-    - Authorization
-    - Content-Type
-    - X-Requested-With
-  exposed-headers:
-    - X-Total-Count
-  allow-credentials: true
-  max-age: 3600
-
----
-# Local Development Profile - FIX
-spring:
-  config:
-    activate:
-      on-profile: local
-  
-  datasource:
-    url: jdbc:postgresql://localhost:5432/dtn_gateway
-    username: dtn_user
-    password: dtn_password  # <-- KONSISTENT mit Docker
-  
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-
-logging:
-  level:
-    com.dtn.gateway: DEBUG
-    org.springframework.web: DEBUG
-    springdoc: DEBUG
-
----
-# Production Profile (unverändert)
-spring:
-  config:
-    activate:
-      on-profile: production
-
-  datasource:
-    url: ${DATABASE_URL}
-    username: ${DB_USER}
-    password: ${DB_PASSWORD}
-
-  jpa:
-    hibernate:
-      ddl-auto: validate
-    show-sql: false
-
-logging:
-  level:
-    com.dtn.gateway: INFO
     org.springframework.web: WARN
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
   pattern:
-    file: '{"timestamp":"%d{yyyy-MM-dd HH:mm:ss.SSS}","level":"%level","thread":"%thread","logger":"%logger{36}","message":"%msg"}%n'
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: ${LOG_FILE:logs/dtn-gateway.log}
+    max-size: 100MB
+    max-history: 7
+
+---
+# Docker Profile
+spring:
+  config:
+    activate:
+      on-profile: docker
+  
+  # Docker Database Configuration  
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:postgres-gateway}:${DB_PORT:5432}/${DB_NAME:dtn_gateway}
+    username: ${DB_USER:dtn_user}
+    password: ${DB_PASSWORD:dtn_secure_2024}
+
+# Docker-specific DTN Configuration
+dtn:
+  compliance:
+    services:
+      compliance-url: http://compliance-service:8081
+      document-url: http://document-service:8082
+
+logging:
+  level:
+    root: INFO
+    com.dtn.gateway: INFO  # <-- KORRIGIERT
+
+---
+# Production Profile
+spring:
+  config:
+    activate:
+      on-profile: prod
+  
+  # Production optimizations
+  jpa:
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        use_sql_comments: false
+
+# Production DTN Configuration
+dtn:
+  compliance:
+    demo-mode: false
+    
+management:
+  endpoint:
+    health:
+      show-details: when-authorized
+
+logging:
+  level:
+    root: WARN
+    com.dtn.gateway: INFO  # <-- KORRIGIERT
