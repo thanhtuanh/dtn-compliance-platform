@@ -2,8 +2,6 @@
 ## DSGVO + EU AI Act konforme KI-Lösung für deutsche Unternehmen
 
 > **Entwickelt von:** Duc Thanh Nguyen | **Erfahrung:** 10+ Jahre Java Fullstack Development  
-> **Live-Demo:** https://dtn-compliance.onrender.com/swagger-ui/  
-> **Status:** Production-Ready | **Sprache:** Deutsch | **Remote-Ready:** ✅
 
 ---
 
